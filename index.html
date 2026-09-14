@@ -1,8 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FPV Interceptor Sim</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<meta name="description" content="A browser FPV quadcopter simulator that flies on your real RC transmitter. Betaflight-style rates, 500 Hz physics, gate circuits and a long-range intercept mode.">
+<meta name="theme-color" content="#0B0E13">
 
+<!-- Link preview (Open Graph). URLs must stay absolute and keep the exact
+     capitalisation of the repo name — GitHub Pages paths are case-sensitive. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FPV Interceptor Sim">
+<meta property="og:url" content="https://amitsas1.github.io/FPV-Intercept-sim/">
+<meta property="og:title" content="FPV Interceptor Sim">
+<meta property="og:description" content="A browser FPV quadcopter simulator that flies on your real RC transmitter. Betaflight-style rates, 500 Hz physics, gate circuits and a long-range intercept mode.">
+<meta property="og:image" content="https://amitsas1.github.io/FPV-Intercept-sim/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="An alpine village rendered in the FPV Interceptor Sim">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FPV Interceptor Sim">
+<meta name="twitter:description" content="A browser FPV quadcopter simulator that flies on your real RC transmitter. Betaflight-style rates, 500 Hz physics, gate circuits and a long-range intercept mode.">
+<meta name="twitter:image" content="https://amitsas1.github.io/FPV-Intercept-sim/og-image.jpg">
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
 :root{
   --bg:#0B0E13;
@@ -24,6 +47,14 @@
   --ui:"Chakra Petch",system-ui,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
 }
+/* Self-contained reset. The Artifact host injects an equivalent one, but served
+   as a plain file (GitHub Pages, opened locally) nothing does — and without
+   [hidden] carrying !important, rules like #advBar{display:flex} out-specify it
+   and Intercept-only controls show in every mode. */
+:root{color-scheme:dark}
+html,body{margin:0;padding:0}
+img{max-width:100%}
+[hidden]{display:none!important}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--ui);overflow:hidden;-webkit-font-smoothing:antialiased}
 button,input,select{font-family:inherit;color:inherit}
@@ -279,7 +310,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
   #drillCard{justify-content:space-around}
 }
 </style>
-
+</head>
+<body>
 <div id="app">
   <div id="view"></div>
   <div id="goggle"></div>
@@ -3128,3 +3160,5 @@ if(typeof THREE==='undefined'){
 } else { boot(); }
 })();
 </script>
+</body>
+</html>
