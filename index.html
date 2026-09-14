@@ -1,0 +1,3130 @@
+<meta charset="utf-8">
+<title>FPV Acro Trainer</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  --bg:#0B0E13;
+  --bg2:#070A0E;
+  --panel:rgba(15,19,26,.86);
+  --panel-solid:#0F131A;
+  --line:#222A36;
+  --line-soft:#1A212B;
+  --ink:#E7EBF1;
+  --dim:#8B95A7;
+  --dimmer:#5C6675;
+  --amber:#FF9E2C;
+  --amber-dim:#7A4E14;
+  --cyan:#3FD8E8;
+  --cyan-dim:#1B5C66;
+  --red:#FF4D5E;
+  --green:#54E08A;
+  --violet:#8B7BF0;
+  --ui:"Chakra Petch",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+#app{position:fixed;inset:0;background:var(--bg);--osdL:256px;--osdR:322px}
+#app.no-right{--osdR:24px}
+#app.no-left{--osdL:24px}
+#view{position:absolute;inset:0}
+#view canvas{display:block;width:100%;height:100%}
+
+/* ---- goggle treatment over the render ---- */
+#goggle{position:absolute;inset:0;pointer-events:none;
+  background:
+    repeating-linear-gradient(to bottom,rgba(0,0,0,.16) 0 1px,rgba(0,0,0,0) 1px 3px),
+    radial-gradient(120% 100% at 50% 50%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%);
+  mix-blend-mode:multiply;opacity:.75}
+
+/* ================= OSD ================= */
+#osd{position:absolute;inset:0;pointer-events:none;font-family:var(--mono);font-size:13px;
+  letter-spacing:.06em;color:#fff;
+  text-shadow:0 0 1px #000,1px 1px 0 #000,-1px 1px 0 #000,1px -1px 0 #000,-1px -1px 0 #000,0 0 6px rgba(0,0,0,.7)}
+/* corners dodge the side rails; the centre stays on the true optical axis */
+.osd-tl{position:absolute;top:62px;left:var(--osdL)}
+.osd-tr{position:absolute;top:62px;right:var(--osdR);text-align:right}
+.osd-bl{position:absolute;bottom:76px;left:var(--osdL)}
+.osd-br{position:absolute;bottom:76px;right:var(--osdR);text-align:right}
+.osd-row{display:flex;gap:8px;align-items:baseline;margin:2px 0;justify-content:flex-start}
+.osd-tr .osd-row,.osd-br .osd-row{justify-content:flex-end}
+.osd-k{color:rgba(255,255,255,.55);font-size:11px}
+.osd-v{font-weight:700;font-variant-numeric:tabular-nums}
+.osd-warn{color:var(--amber)}
+.osd-crit{color:var(--red)}
+#tgtCv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#osdCenter{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(70vw,620px);height:min(46vh,380px)}
+#horizonCv{position:absolute;inset:0;width:100%;height:100%}
+#osdStatus{position:absolute;left:50%;top:calc(50% + 96px);transform:translateX(-50%);
+  font-size:18px;font-weight:700;letter-spacing:.22em;white-space:nowrap}
+
+/* ================= chrome ================= */
+.chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--line);
+  border-radius:3px;background:var(--panel);backdrop-filter:blur(10px);
+  font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.chip b{color:var(--ink);font-weight:700;letter-spacing:.1em}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:none}
+.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+.dot.warn{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.dot.err{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+#topbar{position:absolute;top:14px;left:16px;right:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#topbar .spacer{flex:1}
+.tbtn{padding:6px 12px;border:1px solid var(--line);border-radius:3px;background:var(--panel);
+  backdrop-filter:blur(10px);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);transition:.15s}
+.tbtn:hover{color:var(--ink);border-color:var(--dimmer)}
+.tbtn.active{color:var(--bg);background:var(--amber);border-color:var(--amber)}
+
+/* ================= left telemetry rail ================= */
+#left{position:absolute;left:16px;top:64px;width:224px;display:flex;flex-direction:column;gap:12px}
+.rail{border:1px solid var(--line);border-radius:4px;background:var(--panel);backdrop-filter:blur(12px);padding:12px}
+.rail-h{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dimmer);margin-bottom:9px;
+  display:flex;justify-content:space-between;align-items:center}
+.sticks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stick-wrap{display:flex;flex-direction:column;gap:4px}
+.stick-wrap canvas{width:100%;aspect-ratio:1;display:block;border:1px solid var(--line-soft);border-radius:3px;background:#080B10}
+.stick-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--dimmer);text-align:center}
+.tel{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-family:var(--mono);font-size:11.5px}
+.tel dt{color:var(--dim);font-size:10px;letter-spacing:.08em;align-self:center}
+.tel dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.bar{height:4px;background:#161C25;border-radius:2px;overflow:hidden;margin-top:2px}
+.bar i{display:block;height:100%;background:var(--cyan);transition:width .06s linear}
+.bar.amber i{background:var(--amber)}
+#curveCv{width:100%;aspect-ratio:16/9;display:block;border:1px solid var(--line-soft);border-radius:3px;background:#080B10}
+
+/* ================= right settings ================= */
+#right{position:absolute;right:16px;top:64px;bottom:16px;width:290px;display:flex;flex-direction:column;
+  border:1px solid var(--line);border-radius:4px;background:var(--panel);backdrop-filter:blur(12px)}
+#right.hidden{display:none}
+.tabs{display:flex;border-bottom:1px solid var(--line);flex:none}
+.tab{flex:1;padding:10px 4px;background:none;border:none;border-bottom:2px solid transparent;
+  font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+.tab[aria-selected="true"]{color:var(--amber);border-bottom-color:var(--amber)}
+.tabpanes{overflow-y:auto;padding:14px;flex:1;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.pane{display:none;flex-direction:column;gap:14px}
+.pane.on{display:flex}
+.grp-h{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dimmer);
+  padding-bottom:6px;border-bottom:1px solid var(--line-soft)}
+.sl{display:flex;flex-direction:column;gap:5px}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sl-lbl{font-size:11.5px;color:var(--dim)}
+.sl-val{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:#1D242F;border-radius:2px}
+input[type=range]::-moz-range-track{height:3px;background:#1D242F;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:var(--amber);margin-top:-4.5px;border:none}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--amber);border:none}
+.seg{display:flex;gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{flex:1;padding:7px 4px;background:none;border:none;font-size:10px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--dimmer);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--amber);color:var(--bg2)}
+.btn{padding:9px 12px;border:1px solid var(--line);border-radius:3px;background:#131922;
+  font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);transition:.15s}
+.btn:hover{color:var(--ink);border-color:var(--dimmer)}
+.btn.pri{background:var(--amber);border-color:var(--amber);color:var(--bg2)}
+.btn.pri:hover{filter:brightness(1.1);color:var(--bg2)}
+.note{font-size:11px;line-height:1.55;color:var(--dimmer)}
+.chan{display:grid;grid-template-columns:44px 1fr 34px;gap:8px;align-items:center;margin-bottom:7px}
+.chan-n{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--dim)}
+.chan-bar{height:14px;background:#0A0E13;border:1px solid var(--line-soft);border-radius:2px;position:relative;overflow:hidden}
+.chan-bar i{position:absolute;top:0;bottom:0;background:var(--cyan);opacity:.85}
+.chan-bar u{position:absolute;top:0;bottom:0;width:1px;left:50%;background:var(--line)}
+.chan-inv{font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 0;border:1px solid var(--line);
+  border-radius:2px;background:none;color:var(--dimmer)}
+.chan-inv.on{background:var(--violet);border-color:var(--violet);color:var(--bg2)}
+
+/* ================= bottom drill bar ================= */
+#bottom{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:10px;
+  align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 32px)}
+#advBar{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:4px;
+  background:var(--panel);backdrop-filter:blur(12px);padding:7px 14px}
+.advctl{display:flex;gap:10px;align-items:center}
+.advlbl{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer);white-space:nowrap}
+#advSpeed,#advSearch{width:92px}
+#advBar b{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--amber);
+  font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+#advFlow button{padding:6px 10px}
+
+/* daylight: the analog goggle look eases off and the OSD needs a harder outline */
+#app.advmode .osd-bl,#app.advmode .osd-br{bottom:136px}
+#app.daylight #goggle{opacity:.34}
+#app.daylight #osd{color:#fff;
+  text-shadow:0 0 2px #000,1.5px 1.5px 0 #000,-1.5px 1.5px 0 #000,1.5px -1.5px 0 #000,-1.5px -1.5px 0 #000,0 0 9px rgba(0,0,0,.95)}
+#app.daylight .osd-k{color:rgba(255,255,255,.8)}
+#drillCard{border:1px solid var(--line);border-radius:4px;background:var(--panel);backdrop-filter:blur(12px);
+  padding:9px 16px;display:flex;gap:18px;align-items:center;white-space:nowrap}
+.dstat{display:flex;flex-direction:column;gap:1px;align-items:center}
+.dstat span{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+.dstat b{font-family:var(--mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ================= setup overlay ================= */
+#setup{position:absolute;inset:0;background:rgba(6,9,13,.84);backdrop-filter:blur(5px);
+  display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto;z-index:20}
+#setup.hidden{display:none}
+.setup-box{width:min(680px,100%);border:1px solid var(--line);border-radius:6px;background:var(--panel-solid);
+  padding:28px 30px 26px;display:flex;flex-direction:column;gap:20px}
+.setup-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--amber)}
+.setup-box h1{margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.setup-box h1 + p{margin:0;color:var(--dim);font-size:13.5px;line-height:1.6;max-width:58ch}
+.steps{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line-soft)}
+.step{display:grid;grid-template-columns:26px 1fr;gap:14px;padding:13px 0;border-bottom:1px solid var(--line-soft);align-items:start}
+.step-n{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--amber);padding-top:2px}
+.step-b{font-size:13px;line-height:1.55;color:var(--ink)}
+.step-b em{font-style:normal;color:var(--dim)}
+.step-b code{font-family:var(--mono);font-size:11.5px;background:#161C25;padding:1px 6px;border-radius:2px;color:var(--cyan)}
+.setup-status{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--line);
+  border-radius:3px;background:#0C1016;font-size:12px;color:var(--dim)}
+#blockedNote{margin-top:18px;padding:15px 17px;border:1px solid var(--amber-dim);border-left:3px solid var(--amber);
+  border-radius:3px;background:rgba(255,158,44,.055)}
+.blocked-h{font-size:14px;font-weight:700;color:var(--amber);letter-spacing:.01em;margin-bottom:7px}
+#blockedNote p{margin:0 0 7px;font-size:12.5px;line-height:1.6;color:var(--dim);max-width:62ch}
+#blockedNote p:last-child{margin-bottom:0}
+#blockedNote b{color:var(--ink)}
+#blockedNote code{font-family:var(--mono);font-size:11.5px;background:#161C25;padding:1px 6px;border-radius:2px;color:var(--cyan)}
+.setup-actions{display:flex;gap:10px;flex-wrap:wrap}
+.setup-actions .btn{flex:1;min-width:150px;padding:12px}
+
+/* ================= homepage ================= */
+#home{position:absolute;inset:0;z-index:30;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(7,10,14,.95) 0%,rgba(7,10,14,.975) 46%,rgba(7,10,14,.995) 100%);
+  backdrop-filter:blur(8px)}
+#home.hidden{display:none}
+/* home is a screen, not a layer over the cockpit */
+#app.athome #topbar,#app.athome #left,#app.athome #right,#app.athome #bottom,#app.athome #osd{display:none}
+.home-inner{max-width:1080px;margin:0 auto;padding:44px 28px 34px;display:flex;flex-direction:column;gap:26px}
+.home-head{display:flex;gap:32px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.home-title h1{margin:7px 0 9px;font-size:34px;font-weight:600;letter-spacing:-.015em;text-wrap:balance}
+.home-sub{margin:0;max-width:56ch;font-size:13.5px;line-height:1.6;color:var(--dim)}
+.home-id{display:flex;flex-direction:column;gap:7px;min-width:250px}
+.id-row{display:flex;gap:8px;align-items:stretch}
+#pilotName{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:3px;
+  background:#0C1016;font-size:14px;font-weight:600;letter-spacing:.01em}
+#pilotName::placeholder{color:var(--dimmer);font-weight:400}
+.id-tag{display:flex;align-items:center;padding:0 11px;border:1px solid var(--line);border-radius:3px;
+  background:#12171F;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--cyan)}
+.id-note{margin:0;font-size:11px;line-height:1.5;color:var(--dimmer);max-width:34ch}
+
+.home-radio{display:flex;align-items:center;gap:11px;padding:12px 16px;border:1px solid var(--line);
+  border-left:3px solid var(--dimmer);border-radius:3px;background:#0C1016;font-size:12.5px;color:var(--dim)}
+.home-radio.ok{border-left-color:var(--green)}
+.home-radio.warn{border-left-color:var(--amber)}
+.home-radio.err{border-left-color:var(--red)}
+.home-radio b{color:var(--ink)}
+.home-radio .btn{margin-left:auto;padding:7px 12px;flex:none}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px}
+.gcard{display:flex;flex-direction:column;gap:11px;padding:17px 17px 15px;
+  border:1px solid var(--line);border-radius:5px;background:#0D1218}
+.gc-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.gc-top h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.005em}
+.gc-metric{font-size:9px;letter-spacing:.17em;text-transform:uppercase;color:var(--dimmer);white-space:nowrap}
+.gc-blurb{margin:0;font-size:12px;line-height:1.55;color:var(--dim)}
+.gc-best{display:flex;align-items:baseline;gap:9px;padding:9px 0 10px;border-bottom:1px solid var(--line-soft)}
+.gc-best b{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--amber);
+  font-variant-numeric:tabular-nums;line-height:1}
+.gc-best.empty b{color:var(--dimmer);font-size:17px}
+.gc-best span{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer)}
+.gc-rank{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--cyan)}
+.gc-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;min-height:54px}
+.gc-board li{display:grid;grid-template-columns:16px 1fr auto;gap:9px;align-items:baseline;
+  font-size:11.5px;color:var(--dim)}
+.gc-board li.me{color:var(--ink)}
+.gc-board li.me .lb-n{color:var(--amber)}
+.lb-r{font-family:var(--mono);font-size:10px;color:var(--dimmer)}
+.lb-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-v{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.gc-empty{font-size:11.5px;color:var(--dimmer);line-height:1.5}
+/* one quiet call to action per card — five amber slabs would flatten the page */
+.gc-play{margin-top:2px;background:transparent;border-color:var(--amber-dim);color:var(--amber)}
+.gc-play:hover{background:var(--amber);border-color:var(--amber);color:var(--bg2)}
+
+.home-foot{display:flex;flex-direction:column;gap:12px;padding-top:6px;border-top:1px solid var(--line-soft)}
+.foot-row{display:flex;gap:9px;flex-wrap:wrap}
+#profileIO{display:flex;flex-direction:column;gap:9px}
+#profileText{width:100%;height:110px;resize:vertical;padding:10px 11px;border:1px solid var(--line);
+  border-radius:3px;background:#0A0E13;color:var(--dim);font-family:var(--mono);font-size:11px;line-height:1.5}
+
+/* calibration wizard */
+#calWrap{display:none;flex-direction:column;gap:14px}
+#calWrap.on{display:flex}
+.cal-live{border:1px solid var(--line);border-radius:3px;background:#0A0E13;padding:12px}
+.cal-ask{font-size:15px;font-weight:600;color:var(--amber);letter-spacing:.02em}
+.cal-sub{font-size:12px;color:var(--dim);line-height:1.55;margin-top:3px}
+.axrow{display:grid;grid-template-columns:52px 1fr;gap:9px;align-items:center;margin:5px 0;
+  font-family:var(--mono);font-size:10px;color:var(--dimmer)}
+.axbar{height:9px;background:#0F141B;border-radius:2px;position:relative;overflow:hidden}
+.axbar i{position:absolute;top:0;bottom:0;background:var(--dimmer)}
+.axbar.hot i{background:var(--amber)}
+
+@media (max-width:1000px){
+  #left{display:none}
+  #right{width:250px}
+  #app{--osdL:24px;--osdR:282px}
+}
+@media (max-width:760px){
+  #right{display:none}
+  #app{--osdL:16px;--osdR:16px}
+  #osdCenter{width:88vw}
+  #bottom{left:16px;right:16px;transform:none;flex-direction:column;align-items:stretch;gap:8px}
+  #drillCard{justify-content:space-around}
+}
+</style>
+
+<div id="app">
+  <div id="view"></div>
+  <div id="goggle"></div>
+
+  <div id="osd">
+    <canvas id="tgtCv"></canvas>
+    <div class="osd-tl">
+      <div class="osd-row"><span class="osd-k">TIME</span><span class="osd-v" id="oTime">00:00</span></div>
+      <div class="osd-row"><span class="osd-k">ALT</span><span class="osd-v" id="oAlt">0.0m</span></div>
+    </div>
+    <div class="osd-tr">
+      <div class="osd-row"><span class="osd-v" id="oVbat">25.2V</span><span class="osd-k">PACK</span></div>
+      <div class="osd-row"><span class="osd-v" id="oCell">4.20</span><span class="osd-k">V/CELL</span></div>
+      <div class="osd-row"><span class="osd-v" id="oMah">0</span><span class="osd-k">MAH</span></div>
+    </div>
+    <div class="osd-bl">
+      <div class="osd-row"><span class="osd-k">THR</span><span class="osd-v" id="oThr">0%</span></div>
+      <div class="osd-row"><span class="osd-k">AMP</span><span class="osd-v" id="oAmp">0.0A</span></div>
+    </div>
+    <div class="osd-br">
+      <div class="osd-row"><span class="osd-v" id="oSpd">0</span><span class="osd-k">KM/H</span></div>
+      <div class="osd-row"><span class="osd-v" id="oG">1.0</span><span class="osd-k">G</span></div>
+    </div>
+    <div id="osdCenter"><canvas id="horizonCv"></canvas></div>
+    <div id="osdStatus" class="osd-warn">DISARMED</div>
+  </div>
+
+  <div id="topbar">
+    <div class="chip"><span class="dot" id="rcDot"></span><span id="rcTxt">No radio</span></div>
+    <div class="chip">View <b id="viewTxt">FPV</b></div>
+    <div class="chip">Mode <b id="modeTxt">ACRO</b></div>
+    <div class="spacer"></div>
+    <button class="tbtn" id="btnHome">Home</button>
+    <button class="tbtn" id="btnSound">Sound off</button>
+    <button class="tbtn" id="btnHelp">Setup</button>
+    <button class="tbtn" id="btnPanel">Tuning</button>
+  </div>
+
+  <div id="left">
+    <div class="rail">
+      <div class="rail-h"><span>Sticks</span><span id="modeLbl">MODE 2</span></div>
+      <div class="sticks">
+        <div class="stick-wrap"><canvas id="stickL" width="180" height="180"></canvas><div class="stick-lbl" id="lblL">THR / YAW</div></div>
+        <div class="stick-wrap"><canvas id="stickR" width="180" height="180"></canvas><div class="stick-lbl" id="lblR">PITCH / ROLL</div></div>
+      </div>
+    </div>
+    <div class="rail">
+      <div class="rail-h"><span>Rate curve</span><span id="curveLbl">800°/s</span></div>
+      <canvas id="curveCv" width="240" height="135"></canvas>
+    </div>
+    <div class="rail">
+      <div class="rail-h"><span>Telemetry</span><span id="fps">60</span></div>
+      <dl class="tel">
+        <dt>ROLL</dt><dd id="tRoll">0°</dd>
+        <dt>PITCH</dt><dd id="tPitch">0°</dd>
+        <dt>YAW</dt><dd id="tYaw">0°</dd>
+        <dt>RATE</dt><dd id="tRate">0°/s</dd>
+        <dt>V/S</dt><dd id="tVs">0.0</dd>
+        <dt>DIST</dt><dd id="tDist">0m</dd>
+      </dl>
+      <div class="bar amber" style="margin-top:9px"><i id="barThr" style="width:0%"></i></div>
+      <div class="bar" style="margin-top:5px"><i id="barBat" style="width:100%"></i></div>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-pane="rates">Rates</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="quad">Quad</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="radio">Radio</button>
+    </div>
+    <div class="tabpanes">
+      <div class="pane on" id="pane-rates">
+        <div>
+          <div class="grp-h" style="margin-bottom:9px">Preset</div>
+          <div class="seg" id="ratePreset">
+            <button data-p="cine">Cine</button>
+            <button data-p="free" class="on">Freestyle</button>
+            <button data-p="race">Race</button>
+            <button data-p="boss">Boss</button>
+          </div>
+        </div>
+        <div class="grp-h">Roll / Pitch</div>
+        <div id="grp-rp"></div>
+        <div class="grp-h">Yaw</div>
+        <div id="grp-yaw"></div>
+        <div class="grp-h">Camera</div>
+        <div id="grp-cam"></div>
+      </div>
+
+      <div class="pane" id="pane-quad">
+        <div>
+          <div class="grp-h" style="margin-bottom:9px">5-inch build</div>
+          <div class="seg" id="framePreset">
+            <button data-f="free" class="on">Freestyle</button>
+            <button data-f="race">Race</button>
+            <button data-f="heavy">Heavy / GoPro</button>
+          </div>
+        </div>
+        <div class="grp-h">Airframe</div>
+        <div id="grp-frame"></div>
+        <div class="grp-h">Battery</div>
+        <div id="grp-batt"></div>
+        <div class="grp-h">Aerodynamics</div>
+        <div id="grp-aero"></div>
+        <div class="grp-h">Audio</div>
+        <div id="grp-audio"></div>
+        <div class="grp-h">Sun shadows</div>
+        <div class="seg" id="shadowSeg">
+          <button data-s="1" class="on">On</button>
+          <button data-s="0">Off</button>
+        </div>
+        <p class="note">Shadows cost framerate. Turn them off if you drop below a steady 60 — smooth frames matter far more than looks when you are building stick memory.</p>
+        <button class="btn" id="btnDefaults">Reset to 5-inch defaults</button>
+      </div>
+
+      <div class="pane" id="pane-radio">
+        <div class="grp-h">Live channels</div>
+        <div id="chanList"></div>
+        <div class="grp-h">Stick mode</div>
+        <div class="seg" id="stickMode">
+          <button data-m="2" class="on">Mode 2</button>
+          <button data-m="1">Mode 1</button>
+        </div>
+        <div class="grp-h">Keyboard pitch</div>
+        <div class="seg" id="kbPitch">
+          <button data-i="1" class="on">Inverted</button>
+          <button data-i="0">Normal</button>
+        </div>
+        <div class="grp-h">Input</div>
+        <div id="grp-radio"></div>
+        <button class="btn pri" id="btnCal2">Calibrate sticks</button>
+        <button class="btn" id="btnEdgeTX">Try EdgeTX default map</button>
+        <p class="note">Arm with <b>Enter</b>, or map an AUX switch during calibration. Reset with <b>R</b>. Change view with <b>C</b>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottom">
+    <div class="seg" style="background:var(--panel);backdrop-filter:blur(12px)" id="drillSeg">
+      <button data-d="free" class="on">Free flight</button>
+      <button data-d="hover">Hover box</button>
+      <button data-d="gates">Gate circuit</button>
+      <button data-d="orbit">Orbit</button>
+      <button data-d="catch">Catch</button>
+      <button data-d="adv">Intercept</button>
+    </div>
+    <div id="drillCard"></div>
+    <div id="advBar" hidden>
+      <div class="advctl">
+        <span class="advlbl">Speed</span>
+        <input type="range" id="advSpeed" min="0.5" max="3" step="0.1" aria-label="Target speed multiplier">
+        <b id="advSpeedV">1.0×</b>
+      </div>
+      <div class="advctl">
+        <span class="advlbl">Search</span>
+        <input type="range" id="advSearch" min="0" max="30" step="1" aria-label="Low-altitude search time">
+        <b id="advSearchV">8s</b>
+      </div>
+      <div class="seg" id="advFlow">
+        <button data-w="seq">One by one</button>
+        <button data-w="par" class="on">Parallel</button>
+      </div>
+      <button class="tbtn active" id="advBrackets">Brackets on</button>
+    </div>
+  </div>
+
+  <div id="home">
+    <div class="home-inner">
+      <header class="home-head">
+        <div class="home-title">
+          <div class="setup-eyebrow">FPV Acro Trainer</div>
+          <h1>Pick a drill</h1>
+          <p class="home-sub">Five scored drills plus open free flight. Every board below is kept on this browser, one personal best per pilot.</p>
+        </div>
+        <div class="home-id">
+          <span class="advlbl">Call sign</span>
+          <div class="id-row">
+            <input id="pilotName" type="text" maxlength="16" placeholder="Unnamed" aria-label="Your call sign">
+            <span class="id-tag" id="pilotTag">#0000</span>
+          </div>
+          <p class="id-note">The tag is yours and never changes — it keeps two pilots with the same call sign apart.</p>
+        </div>
+      </header>
+
+      <div class="home-radio" id="homeRadio"></div>
+      <div class="cards" id="gameCards"></div>
+
+      <footer class="home-foot">
+        <div class="foot-row">
+          <button class="btn" id="btnFree">Free flight — no scoring</button>
+          <button class="btn" id="btnRadio2">Radio setup</button>
+          <button class="btn" id="btnProfile">Move profile to another browser</button>
+          <button class="btn" id="btnWipe">Reset boards</button>
+        </div>
+        <div id="profileIO" hidden>
+          <p class="note">This is your pilot record — id, call sign and every best. Copy it somewhere safe, or paste one in and apply to carry your scores to another browser or machine.</p>
+          <textarea id="profileText" spellcheck="false" aria-label="Profile data"></textarea>
+          <div class="foot-row">
+            <button class="btn" id="btnCopy">Copy</button>
+            <button class="btn pri" id="btnApply">Apply pasted record</button>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <div id="setup" class="hidden">
+    <div class="setup-box">
+      <div id="introWrap">
+        <div class="setup-eyebrow">Bench check</div>
+        <h1 style="margin:8px 0 10px">Connect your transmitter</h1>
+        <p>This sim flies on rate mode with Betaflight-style curves, so the muscle memory you build here transfers to a real quad. It reads your actual radio through the browser's gamepad interface — no drivers, no install.</p>
+        <div class="steps" style="margin-top:18px">
+          <div class="step"><div class="step-n">01</div><div class="step-b">Plug the radio into this computer with a USB-C or micro-USB data cable. <em>Charge-only cables won't enumerate.</em></div></div>
+          <div class="step"><div class="step-n">02</div><div class="step-b">On the radio's screen choose <code>USB Joystick (HID)</code>. <em>EdgeTX and OpenTX both prompt on connect — RadioMaster, Jumper, TX16S, FrSky Taranis, Horus.</em></div></div>
+          <div class="step"><div class="step-n">03</div><div class="step-b">Move any stick. <em>Browsers hide gamepads until they see input, so nothing appears until you nudge a gimbal. Until then the keyboard flies, and the radio takes over the moment it shows up.</em></div></div>
+          <div class="step"><div class="step-n">04</div><div class="step-b">Run the stick calibration below, then arm with the <code>Enter</code> key or your AUX switch.</div></div>
+        </div>
+        <div id="blockedNote" hidden>
+          <div class="blocked-h">Your transmitter can't be read on this page</div>
+          <p>The hosted page runs inside a sandboxed frame, and that frame withholds the browser's gamepad feature — so the radio is unreachable here no matter how it's plugged in. Nothing is wrong with your setup.</p>
+          <p><b>Download the file from the chat and open it directly in Chrome.</b> Same sim, and the radio works: <code>File &rsaquo; Open</code>, or drag the <code>.html</code> onto a Chrome window.</p>
+          <p>Keyboard flying still works right here if you only want to look around the village.</p>
+        </div>
+        <div class="setup-status" style="margin-top:18px">
+          <span class="dot" id="setupDot"></span><span id="setupMsg">Waiting for a radio — move a stick.</span>
+        </div>
+        <div class="setup-actions" style="margin-top:16px">
+          <button class="btn pri" id="btnCal">Calibrate sticks</button>
+          <button class="btn" id="btnSkip">Continue with keyboard</button>
+        </div>
+        <p class="note" style="margin-top:4px">Keyboard fallback: <b>W/S</b> throttle · <b>A/D</b> yaw · <b>arrow keys</b> pitch and roll. Fine for checking the sim, useless for building real stick memory.</p>
+      </div>
+
+      <div id="calWrap">
+        <div class="setup-eyebrow">Calibration</div>
+        <div class="cal-ask" id="calAsk">Center all sticks</div>
+        <div class="cal-sub" id="calSub">Leave everything at rest, then continue.</div>
+        <div class="cal-live"><div id="axList"></div></div>
+        <div class="setup-actions">
+          <button class="btn pri" id="calNext">Continue</button>
+          <button class="btn" id="calCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+var TAU=Math.PI*2, D2R=Math.PI/180, R2D=180/Math.PI;
+var clamp=function(v,a,b){return v<a?a:(v>b?b:v)};
+var lerp=function(a,b,t){return a+(b-a)*t};
+var $=function(s){return document.querySelector(s)};
+
+/* =======================================================================
+   1. CONFIGURATION  — every tunable in one place, sliders are generated
+   ======================================================================= */
+var CFG={
+  // rates (Betaflight "Actual Rates")
+  rpCenter:200, rpMax:800, rpExpo:0.35,
+  yawCenter:180, yawMax:600, yawExpo:0.30,
+  camTilt:28, fov:95,
+  // airframe
+  mass:0.68, twr:11, motorTau:45, propwash:0.55,
+  // battery
+  cells:6, capacity:1300, maxAmps:95, resist:28,
+  // aero
+  dragScale:1.0, groundEffect:1,
+  // audio
+  volume:55, windVol:60,
+  // quality
+  shadows:1,
+  // radio
+  deadband:2, expoSmooth:0,
+  stickMode:2, kbInvertPitch:1,
+  // advanced intercept
+  tgtSpeed:1.0, brackets:1, searchTime:8, waveMode:'par'
+};
+var DEFAULTS=JSON.parse(JSON.stringify(CFG));
+
+var SLIDERS={
+  'grp-rp':[
+    {k:'rpCenter',l:'Center sensitivity',min:40,max:600,step:5,u:'°/s'},
+    {k:'rpMax',l:'Max rate',min:200,max:1600,step:10,u:'°/s'},
+    {k:'rpExpo',l:'Expo',min:0,max:1,step:0.01,u:''}
+  ],
+  'grp-yaw':[
+    {k:'yawCenter',l:'Center sensitivity',min:40,max:500,step:5,u:'°/s'},
+    {k:'yawMax',l:'Max rate',min:150,max:1000,step:10,u:'°/s'},
+    {k:'yawExpo',l:'Expo',min:0,max:1,step:0.01,u:''}
+  ],
+  'grp-cam':[
+    {k:'camTilt',l:'Camera uptilt',min:0,max:55,step:1,u:'°'},
+    {k:'fov',l:'Field of view',min:60,max:130,step:1,u:'°'}
+  ],
+  'grp-frame':[
+    {k:'mass',l:'All-up weight',min:0.25,max:1.6,step:0.01,u:'kg'},
+    {k:'twr',l:'Thrust-to-weight',min:2,max:18,step:0.1,u:':1'},
+    {k:'motorTau',l:'Motor response',min:10,max:140,step:1,u:'ms'}
+  ],
+  'grp-batt':[
+    {k:'cells',l:'Cell count',min:2,max:8,step:1,u:'S'},
+    {k:'capacity',l:'Capacity',min:300,max:3000,step:50,u:'mAh'},
+    {k:'maxAmps',l:'Peak current',min:20,max:200,step:5,u:'A'},
+    {k:'resist',l:'Internal resistance',min:5,max:80,step:1,u:'mΩ'}
+  ],
+  'grp-aero':[
+    {k:'dragScale',l:'Drag',min:0.3,max:2.5,step:0.05,u:'×'},
+    {k:'propwash',l:'Prop wash',min:0,max:1.5,step:0.05,u:'×'},
+    {k:'groundEffect',l:'Ground effect',min:0,max:2,step:0.1,u:'×'}
+  ],
+  'grp-audio':[
+    {k:'volume',l:'Master volume',min:0,max:100,step:1,u:'%'},
+    {k:'windVol',l:'Airframe rush',min:0,max:100,step:1,u:'%'}
+  ],
+  'grp-radio':[
+    {k:'deadband',l:'Deadband',min:0,max:12,step:1,u:'%'},
+    {k:'expoSmooth',l:'Input smoothing',min:0,max:80,step:1,u:'ms'}
+  ]
+};
+
+/* 5-inch builds — the class the user actually flies */
+var FRAME_PRESETS={
+  free :{mass:0.68,twr:11.0,motorTau:45,cells:6,capacity:1300,maxAmps:95, resist:28,dragScale:1.00},
+  race :{mass:0.60,twr:13.5,motorTau:38,cells:6,capacity:1300,maxAmps:115,resist:24,dragScale:0.92},
+  heavy:{mass:0.88,twr:8.2, motorTau:56,cells:6,capacity:1500,maxAmps:88, resist:31,dragScale:1.18}
+};
+var RATE_PRESETS={
+  cine:{rpCenter:110,rpMax:380,rpExpo:0.20,yawCenter:110,yawMax:320,yawExpo:0.15},
+  free:{rpCenter:200,rpMax:800,rpExpo:0.35,yawCenter:180,yawMax:600,yawExpo:0.30},
+  race:{rpCenter:260,rpMax:980,rpExpo:0.42,yawCenter:220,yawMax:760,yawExpo:0.35},
+  boss:{rpCenter:340,rpMax:1400,rpExpo:0.55,yawCenter:280,yawMax:1000,yawExpo:0.45}
+};
+
+/* persistence — per-viewer convenience only */
+function save(){
+  try{
+    localStorage.setItem('fpvtrainer.cfg',JSON.stringify(CFG));
+    localStorage.setItem('fpvtrainer.rc',JSON.stringify(RC.map));
+  }catch(e){}
+}
+function load(){
+  try{
+    var c=localStorage.getItem('fpvtrainer.cfg');
+    if(c){var o=JSON.parse(c);for(var k in o){if(k in CFG)CFG[k]=o[k]}}
+    var r=localStorage.getItem('fpvtrainer.rc');
+    if(r){var m=JSON.parse(r); if(m&&m.thr)return m;}
+  }catch(e){}
+  return null;
+}
+
+/* =======================================================================
+   1b. PILOT IDENTITY + SCORES
+   -----------------------------------------------------------------------
+   localStorage, not cookies: cookies are unreliable on file:// pages, capped
+   at ~4 KB, expire, and ride along on every request for nothing. The durable
+   identity is a generated id — the call sign is only a label, so two pilots
+   may pick the same one and a short tag off the id keeps them apart.
+   ======================================================================= */
+var PROFILE=null, LB=null;
+
+function newId(){
+  try{ if(window.crypto&&crypto.randomUUID) return crypto.randomUUID() }catch(e){}
+  try{
+    if(window.crypto&&crypto.getRandomValues){
+      var a=new Uint8Array(16); crypto.getRandomValues(a);
+      return Array.prototype.map.call(a,function(b){return ('0'+b.toString(16)).slice(-2)}).join('');
+    }
+  }catch(e2){}
+  var s=''; for(var i=0;i<32;i++) s+=Math.floor(Math.random()*16).toString(16);
+  return s;
+}
+function tagOf(id){ return String(id).replace(/[^a-zA-Z0-9]/g,'').slice(0,4).toUpperCase() }
+function pilotLabel(p){ return (p.name||'Unnamed')+'#'+tagOf(p.id) }
+
+function loadProfile(){
+  try{
+    var raw=localStorage.getItem('fpvtrainer.profile');
+    if(raw){ var p=JSON.parse(raw); if(p&&p.id) return p }
+  }catch(e){}
+  return {id:newId(),name:'',created:Date.now()};
+}
+function saveProfile(){
+  try{ localStorage.setItem('fpvtrainer.profile',JSON.stringify(PROFILE)) }catch(e){}
+}
+
+var GAMES=[
+  {id:'hover',name:'Hover box',   metric:'Best hold', lower:false,
+   blurb:'Hold a three-metre cube in acro. The fundamental, and the one that stings.',
+   fmt:function(v){return v.toFixed(1)+'s'}},
+  {id:'gates',name:'Gate circuit',metric:'Best lap',  lower:true,
+   blurb:'Six gates on a closed circuit. Smoothness beats throttle every time.',
+   fmt:function(v){return fmtT(v)}},
+  {id:'orbit',name:'Orbit',       metric:'Orbits',    lower:false,
+   blurb:'Circle the pole at six metres. Coordinated roll and yaw, held.',
+   fmt:function(v){return String(Math.round(v))}},
+  {id:'catch',name:'Catch',       metric:'Caught',    lower:false,
+   blurb:'Delivery drones inbound on five pads. Reach them before they touch down.',
+   fmt:function(v){return String(Math.round(v))}},
+  {id:'adv',  name:'Intercept',   metric:'Hits',      lower:false,
+   blurb:'Daylight, five-hundred-metre approaches, direct contact only.',
+   fmt:function(v){return String(Math.round(v))}}
+];
+var GAME_BY_ID={}; GAMES.forEach(function(g){GAME_BY_ID[g.id]=g});
+
+LB={
+  data:{}, dirty:false, lastFlush:0,
+  load:function(){
+    try{
+      var raw=localStorage.getItem('fpvtrainer.board');
+      if(raw){ var d=JSON.parse(raw); if(d&&typeof d==='object') this.data=d }
+    }catch(e){}
+    this.normalise();
+  },
+  // sort and de-duplicate on the way in: submit() is not the only way rows arrive
+  // here — an imported record or hand-edited storage must still rank correctly
+  normalise:function(){
+    GAMES.forEach(function(g){
+      var a=LB.data[g.id];
+      if(!Array.isArray(a)){ LB.data[g.id]=[]; return }
+      var seen={}, out=[];
+      for(var i=0;i<a.length;i++){
+        var r=a[i];
+        if(!r||typeof r.v!=='number'||!isFinite(r.v)||!r.id) continue;
+        var prev=seen[r.id];
+        if(prev){ if(g.lower ? r.v<prev.v : r.v>prev.v){ prev.v=r.v; prev.meta=r.meta; prev.ts=r.ts } continue }
+        seen[r.id]=r; out.push(r);
+      }
+      out.sort(function(x,y){ return g.lower ? x.v-y.v : y.v-x.v });
+      if(out.length>20) out.length=20;
+      LB.data[g.id]=out;
+    });
+  },
+  flush:function(){
+    if(!this.dirty) return;
+    try{ localStorage.setItem('fpvtrainer.board',JSON.stringify(this.data)) }catch(e){}
+    this.dirty=false; this.lastFlush=performance.now();
+  },
+  rows:function(game){ return this.data[game]||[] },
+  mine:function(game){
+    var a=this.rows(game);
+    for(var i=0;i<a.length;i++) if(a[i].id===PROFILE.id) return a[i];
+    return null;
+  },
+  rank:function(game){
+    var a=this.rows(game);
+    for(var i=0;i<a.length;i++) if(a[i].id===PROFILE.id) return i+1;
+    return 0;
+  },
+  // one personal best per pilot per game; the board is those bests, ranked
+  submit:function(game,v,meta){
+    if(typeof v!=='number'||!isFinite(v)) return;
+    var g=GAME_BY_ID[game]; if(!g) return;
+    var a=this.data[game]||(this.data[game]=[]);
+    var mine=this.mine(game);
+    if(mine && !(g.lower ? v<mine.v : v>mine.v)){
+      if(mine.name!==(PROFILE.name||'')){ mine.name=PROFILE.name||''; this.dirty=true }
+      return;
+    }
+    if(!mine){ mine={id:PROFILE.id,name:PROFILE.name||'',v:v,meta:meta||null,ts:Date.now()}; a.push(mine) }
+    else { mine.v=v; mine.meta=meta||null; mine.ts=Date.now(); mine.name=PROFILE.name||'' }
+    a.sort(function(x,y){ return g.lower ? x.v-y.v : y.v-x.v });
+    if(a.length>20) a.length=20;
+    this.dirty=true;
+  },
+  renameMe:function(){
+    var n=PROFILE.name||'';
+    GAMES.forEach(function(g){
+      var r=LB.mine(g.id); if(r&&r.name!==n){ r.name=n; LB.dirty=true }
+    });
+    this.flush();
+  }
+};
+
+/* =======================================================================
+   2. RADIO INPUT
+   ======================================================================= */
+var RC={
+  pad:null, connected:false, blocked:false,
+  map:null,               // {thr:{axis,min,max,inv}, roll:..., pitch:..., yaw:..., aux:{axis|button,...}}
+  raw:{thr:0,roll:0,pitch:0,yaw:0,aux:0},
+  out:{thr:0,roll:0,pitch:0,yaw:0},
+  keyboard:false,
+  kb:{thr:0,roll:0,pitch:0,yaw:0},
+  keys:{}
+};
+var CHANS=['thr','roll','pitch','yaw','aux'];
+var CHAN_LABEL={thr:'THR',roll:'ROLL',pitch:'PITCH',yaw:'YAW',aux:'AUX'};
+
+function blankMap(){
+  return {thr:{axis:2,min:-1,max:1,inv:false},
+          roll:{axis:0,min:-1,max:1,inv:false},
+          pitch:{axis:1,min:-1,max:1,inv:true},
+          yaw:{axis:3,min:-1,max:1,inv:false},
+          aux:{axis:-1,min:-1,max:1,inv:false}};
+}
+RC.map=blankMap();
+
+/* Some embedders (the hosted artifact frame among them) withhold the gamepad
+   feature via permissions policy, and getGamepads() then throws rather than
+   returning an empty list. Detect it once, say so, and fall back to keyboard. */
+function pollPad(){
+  if(RC.blocked){ RC.pad=null; return null }
+  var pads;
+  try{ pads=navigator.getGamepads?navigator.getGamepads():[] }
+  catch(e){ onGamepadBlocked(); return null }
+  var found=null;
+  for(var i=0;i<pads.length;i++){ if(pads[i]&&pads[i].connected){found=pads[i];break} }
+  RC.pad=found;
+  var was=RC.connected;
+  RC.connected=!!found;
+  if(RC.connected!==was) updateRcChip();
+  return found;
+}
+function onGamepadBlocked(){
+  if(RC.blocked) return;
+  RC.blocked=true; RC.pad=null; RC.connected=false; RC.keyboard=true;
+  CAL.active=false;
+  var n=$('#blockedNote'); if(n) n.hidden=false;
+  // the plug-it-in steps no longer apply here, so let the notice lead
+  var st=$('#introWrap .steps'); if(st){ st.style.opacity='.35'; st.style.pointerEvents='none' }
+  var cw=$('#calWrap'); if(cw) cw.classList.remove('on');
+  var iw=$('#introWrap'); if(iw) iw.style.display='';
+  ['#btnCal','#btnCal2'].forEach(function(sel){
+    var b=$(sel); if(!b)return;
+    b.disabled=true; b.classList.remove('pri');
+    b.style.opacity='.45'; b.style.cursor='not-allowed';
+    b.textContent='Radio blocked on this page';
+  });
+  updateRcChip();
+}
+
+function axVal(ch){
+  var m=RC.map[ch]; if(!RC.pad||!m||m.axis<0)return null;
+  var a=RC.pad.axes[m.axis]; if(typeof a!=='number')return null;
+  var span=(m.max-m.min)||2;
+  var t=(a-m.min)/span;                 // 0..1
+  t=clamp(t,0,1);
+  if(m.inv)t=1-t;
+  return t;
+}
+
+function readRC(dt){
+  pollPad();
+  var db=CFG.deadband/100;
+  var g={thr:0,roll:0,pitch:0,yaw:0,aux:0};
+
+  // a transmitter always wins; with none present the keyboard is live automatically,
+  // and a radio plugged in mid-session takes over on its next frame
+  RC.keyboard=!RC.connected;
+
+  if(RC.connected && RC.map){
+    var t=axVal('thr'); g.thr = t===null?0:t;
+    ['roll','pitch','yaw'].forEach(function(c){
+      var v=axVal(c); g[c]= v===null?0:(v*2-1);
+    });
+    var a=axVal('aux'); g.aux = a===null?0:a;
+  } else {
+    var k=RC.keys, K=RC.kb, r=dt*3.2;
+    K.thr=clamp(K.thr+((k['w']?1:0)-(k['s']?1:0))*dt*1.1,0,1);
+    K.roll =approach(K.roll ,(k['arrowright']?1:0)-(k['arrowleft']?1:0),r);
+    // inverted by default: arrow up pitches the nose down, as on a stick
+    var pUp=(k['arrowup']?1:0)-(k['arrowdown']?1:0);
+    K.pitch=approach(K.pitch,CFG.kbInvertPitch?-pUp:pUp,r);
+    K.yaw  =approach(K.yaw  ,(k['d']?1:0)-(k['a']?1:0),r);
+    g.thr=K.thr; g.roll=K.roll; g.pitch=K.pitch; g.yaw=K.yaw;
+  }
+  RC.raw=g;
+
+  // deadband on the three rate axes
+  function dz(v){ if(Math.abs(v)<db)return 0; return (v-Math.sign(v)*db)/(1-db); }
+  var target={thr:g.thr,roll:dz(g.roll),pitch:dz(g.pitch),yaw:dz(g.yaw)};
+
+  // optional smoothing (ms -> first order)
+  if(CFG.expoSmooth>1){
+    var al=1-Math.exp(-dt/(CFG.expoSmooth/1000));
+    for(var c in target) RC.out[c]=lerp(RC.out[c],target[c],al);
+  } else { for(var c2 in target) RC.out[c2]=target[c2]; }
+}
+function typingInField(e){
+  var t=e.target; if(!t) return false;
+  var n=(t.tagName||'').toLowerCase();
+  return n==='input'||n==='textarea'||n==='select'||t.isContentEditable===true;
+}
+function modalOpen(){
+  var h=document.getElementById('home'), s=document.getElementById('setup');
+  return (h && !h.classList.contains('hidden')) || (s && !s.classList.contains('hidden'));
+}
+function clearKeys(){
+  RC.keys={};
+  RC.kb.thr=0; RC.kb.roll=0; RC.kb.pitch=0; RC.kb.yaw=0;
+}
+function approach(cur,tgt,r){ var d=tgt-cur; var s=Math.sign(d)*Math.min(Math.abs(d),r*2); return clamp(cur+s,-1,1); }
+
+/* Betaflight-style "Actual Rates" */
+function actualRate(stick,center,maxRate,expo){
+  var x=Math.abs(clamp(stick,-1,1)), s=stick<0?-1:1;
+  var e=x*x*x*expo + x*(1-expo);
+  return s*(center*x + Math.max(0,maxRate-center)*e);
+}
+function stickToRates(){
+  // stickMode only affects which physical gimbal drives what — handled at map level,
+  // so here we just apply curves.
+  return {
+    roll : actualRate(RC.out.roll ,CFG.rpCenter ,CFG.rpMax ,CFG.rpExpo),
+    pitch: actualRate(RC.out.pitch,CFG.rpCenter ,CFG.rpMax ,CFG.rpExpo),
+    yaw  : actualRate(RC.out.yaw  ,CFG.yawCenter,CFG.yawMax,CFG.yawExpo)
+  };
+}
+
+/* =======================================================================
+   3. FLIGHT PHYSICS  — 500 Hz fixed step
+   ======================================================================= */
+var Q={
+  p:new THREE.Vector3(0,0.09,0),
+  v:new THREE.Vector3(),
+  q:new THREE.Quaternion(),
+  w:new THREE.Vector3(),          // body angular velocity, rad/s
+  motor:0,
+  armed:false, crashed:false, crashT:0,
+  mah:0, vbat:25.2,
+  flightTime:0, dist:0, gforce:1,
+  washN:new THREE.Vector3()
+};
+var RADIUS=0.11;
+var G=9.81;
+var _v=new THREE.Vector3(), _v2=new THREE.Vector3(), _qi=new THREE.Quaternion();
+
+function vFull(){return 4.2*CFG.cells}
+function vRestNow(){
+  var used=clamp(Q.mah/CFG.capacity,0,1);
+  // LiPo discharge shape: steep top, flat middle, cliff at the end
+  var perCell = 4.2 - 0.55*Math.pow(used,0.45) - 0.45*Math.pow(used,6);
+  return Math.max(2.9,perCell)*CFG.cells;
+}
+
+function resetQuad(pos,yaw){
+  Q.p.set(pos.x,pos.y,pos.z); Q.v.set(0,0,0); Q.w.set(0,0,0);
+  Q.q.setFromEuler(new THREE.Euler(0,yaw||0,0,'YXZ'));
+  Q.motor=0; Q.crashed=false; Q.crashT=0; Q.gforce=1;
+}
+function fullReset(){
+  Q.mah=0; Q.flightTime=0; Q.dist=0; Q.armed=false;
+  resetQuad(DRILL.spawn(),DRILL.spawnYaw());
+  DRILL.reset();
+}
+
+function step(dt){
+  // ---- battery ----
+  var duty=Q.motor;
+  var amps=CFG.maxAmps*duty*duty;
+  Q.vbat = vRestNow() - amps*(CFG.resist/1000);
+  Q.vbat = Math.max(CFG.cells*2.8,Q.vbat);
+  if(Q.armed && !Q.crashed) Q.mah += amps*1000*dt/3600;
+
+  if(Q.crashed){
+    Q.crashT+=dt;
+    Q.v.multiplyScalar(Math.exp(-3*dt));
+    Q.w.multiplyScalar(Math.exp(-4*dt));
+    Q.p.addScaledVector(Q.v,dt);
+    var cf=terrainY(Q.p.x,Q.p.z)+RADIUS;
+    if(Q.p.y<cf){Q.p.y=cf;Q.v.set(0,0,0)}
+    return;
+  }
+
+  var rates=stickToRates();
+  var thrCmd=RC.out.thr;
+
+  // ---- angular loop (rate controller with torque limit; airmode on) ----
+  var wt=_v.set(rates.pitch*D2R, -rates.yaw*D2R, -rates.roll*D2R);
+  if(!Q.armed) wt.set(0,0,0);
+  var kP=30;
+  var limRP=6000*D2R, limY=2200*D2R;
+  var ax=clamp((wt.x-Q.w.x)*kP,-limRP,limRP);
+  var ay=clamp((wt.y-Q.w.y)*kP,-limY ,limY );
+  var az=clamp((wt.z-Q.w.z)*kP,-limRP,limRP);
+
+  // ---- prop wash: descending through your own turbulence ----
+  var descend=clamp((-Q.v.y-2.0)/8,0,1);
+  var wash=descend*Math.min(1,thrCmd*1.6)*CFG.propwash;
+  if(wash>0.001){
+    var wn=Q.washN, k=1-Math.exp(-dt/0.05);
+    wn.x=lerp(wn.x,(Math.random()*2-1),k);
+    wn.y=lerp(wn.y,(Math.random()*2-1),k);
+    wn.z=lerp(wn.z,(Math.random()*2-1),k);
+    var wm=wash*14;
+    ax+=wn.x*wm; ay+=wn.y*wm*0.4; az+=wn.z*wm;
+  }
+  Q.w.x+=ax*dt; Q.w.y+=ay*dt; Q.w.z+=az*dt;
+  Q.w.multiplyScalar(Math.exp(-0.6*dt));   // slight aero damping
+
+  // integrate orientation with body rates
+  var dq=new THREE.Quaternion(Q.w.x*dt*0.5,Q.w.y*dt*0.5,Q.w.z*dt*0.5,1);
+  Q.q.multiply(dq).normalize();
+
+  // ---- motors ----
+  var idle=Q.armed?0.055:0;
+  var cmd=Q.armed? idle+(1-idle)*thrCmd : 0;
+  Q.motor += (cmd-Q.motor)*(1-Math.exp(-dt/(CFG.motorTau/1000)));
+
+  var vRatio=Q.vbat/vFull();
+  var maxT=CFG.twr*CFG.mass*G;
+  var thrust=maxT*Math.pow(clamp(Q.motor*vRatio,0,1.2),2);
+
+  // ground effect, measured from the surface actually underneath
+  var gy=terrainY(Q.p.x,Q.p.z), agl=Q.p.y-gy;
+  if(CFG.groundEffect>0 && agl<0.45){
+    thrust*= 1 + 0.22*CFG.groundEffect*(1-Math.max(0,agl)/0.45);
+  }
+
+  // ---- forces ----
+  var F=_v2.set(0,thrust,0).applyQuaternion(Q.q);
+  F.y-=CFG.mass*G;
+
+  // per-axis quadratic drag in body frame
+  _qi.copy(Q.q).invert();
+  var vb=new THREE.Vector3().copy(Q.v).applyQuaternion(_qi);
+  var sp=Q.v.length();
+  var ds=CFG.dragScale;
+  var db=new THREE.Vector3(-0.045*ds*sp*vb.x, -0.075*ds*sp*vb.y, -0.033*ds*sp*vb.z);
+  db.applyQuaternion(Q.q);
+  F.add(db);
+
+  var accel=F.divideScalar(CFG.mass);
+  Q.gforce=lerp(Q.gforce, Math.max(0,thrust/(CFG.mass*G)), 1-Math.exp(-dt/0.08));
+
+  Q.v.addScaledVector(accel,dt);
+  var before=Q.p.y;
+  Q.p.addScaledVector(Q.v,dt);
+  Q.dist+=Q.v.length()*dt;
+  if(Q.armed) Q.flightTime+=dt;
+
+  // ---- ground ----
+  var floor=terrainY(Q.p.x,Q.p.z)+RADIUS;
+  if(Q.p.y<floor){
+    var impact=Math.max(-Q.v.y, Q.v.length()*0.6);
+    var up=new THREE.Vector3(0,1,0).applyQuaternion(Q.q);
+    if(impact>4.5 || up.y<0.45){ crash(); return; }
+    Q.p.y=floor;
+    if(Q.v.y<0)Q.v.y=0;
+    Q.v.x*=Math.exp(-6*dt); Q.v.z*=Math.exp(-6*dt);
+    Q.w.multiplyScalar(Math.exp(-8*dt));
+  }
+  if(Q.p.y>420){Q.p.y=420;Q.v.y=Math.min(0,Q.v.y)}
+
+  // ---- world collisions ----
+  if(WORLD.hitTest(Q.p,RADIUS)) crash();
+  DRILL.track(dt,before);
+}
+
+function crash(){
+  if(Q.crashed)return;
+  Q.crashed=true; Q.crashT=0; Q.armed=false;
+  DRILL.onCrash();
+  if(AUDIO.on) AUDIO.crash();
+}
+
+/* =======================================================================
+   4. SCENE
+   ======================================================================= */
+var renderer,scene,camFPV,camChase,camLOS,activeCam,viewMode=0;
+var VIEWS=['FPV','CHASE','LOS'];
+var droneObj,blobShadow,propMeshes=[];
+var WORLD={gates:[],poles:[],boxes:[],hitTest:function(){return false}};
+
+/* ---- terrain: flat flying field, foothills, a ring of peaks, one village shelf ---- */
+function smoothstep(a,b,x){var t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
+/* The village now sits at the middle of the map, out on open ground; the gate
+   field and its drills move to their own meadow east of it, and the range stays
+   far to the west. */
+var VILLAGE={x:0,z:0,hx:44,hz:48,h:5};
+var ARENA={x:190,z:-10};
+var LOS_STAND={x:41,z:6};           // village-local spot the spotter camera stands on
+/* The range stands to the west only. East of the village the land rolls open
+   and falls away, so the horizon reads as lowland haze rather than a rim — and
+   which way you are facing is legible at a glance from inside the goggles. */
+var PEAKS=[];
+(function(){
+  // front ridge: ragged, running north-south, tapering at both ends. Far enough
+  // out that from the village it reads as scenery, not a wall across the valley.
+  for(var i=0;i<11;i++){
+    var t=Math.abs(i-5)/6;
+    var taper=Math.max(0.30,1-t*t*2.1);
+    PEAKS.push({x:-490+Math.sin(i*1.7)*70, z:-640+i*128,
+                h:(215+((i*67)%140))*taper, s:112+((i*29)%62)});
+  }
+  // back range: taller, hazier, gives the ridge depth instead of a flat cut-out
+  for(var j=0;j<8;j++){
+    PEAKS.push({x:-790+Math.cos(j*2.1)*95, z:-660+j*185,
+                h:340+((j*83)%150), s:190+((j*41)%85)});
+  }
+  // foothills stepping down onto the valley floor
+  PEAKS.push({x:-340,z:-50, h:78,s:100});
+  PEAKS.push({x:-300,z:170, h:56,s:86});
+  PEAKS.push({x:-365,z:-225,h:92,s:106});
+  PEAKS.push({x:-268,z:290, h:44,s:74});
+})();
+function terrainY(x,z){
+  var r=Math.hypot(x,z);
+  // ground swells westward toward the range; the valley floor east of it stays low
+  var w=smoothstep(-130,-520,x);
+  var y=w*w*92;
+  for(var i=0;i<PEAKS.length;i++){
+    var p=PEAKS[i],dx=x-p.x,dz=z-p.z,dd=dx*dx+dz*dz,ss=p.s*p.s;
+    if(dd<ss*9) y+=p.h*Math.exp(-dd/ss);      // 3-sigma cutoff keeps this cheap at 500 Hz
+  }
+  var rollMask=smoothstep(70,150,Math.hypot(x-ARENA.x,z-ARENA.z));   // gate field stays dead flat
+  y+=(Math.sin(x*0.013)*Math.cos(z*0.018)+Math.sin((x+z)*0.0085)*0.7)*2.7*rollMask;
+  // distant ground drops away so the horizon is terrain, not the edge of the mesh
+  y-=Math.pow(smoothstep(280,1050,r),1.6)*210;
+  var vd=Math.max(Math.abs(x-VILLAGE.x)/VILLAGE.hx,Math.abs(z-VILLAGE.z)/VILLAGE.hz);
+  var pl=1-smoothstep(0.72,1.02,vd);
+  if(pl>0) y=lerp(y,VILLAGE.h,pl);
+  return y;
+}
+function vWorld(lx,lz){return {x:VILLAGE.x+lx,z:VILLAGE.z+lz}}
+
+/* ---- lighting states: the moody goggle dusk, and flat bright daylight ---- */
+var LIGHTS={}, SKYU=null, skyState='dusk';
+var SKY={
+  dusk:{low:[0.086,0.110,0.150],mid:[0.115,0.150,0.196],top:[0.040,0.058,0.090],
+        fog:0x141C26,near:90, far:1050, amb:0.60,hemi:0.46,dir:0.52,rim:0.20,
+        hemiSky:0x8FA6C2,dirCol:0xFFE2BC},
+  day :{low:[0.300,0.345,0.390],mid:[0.780,0.830,0.880],top:[0.235,0.420,0.700],
+        fog:0xC2D0DE,near:320,far:2700, amb:0.55,hemi:0.85,dir:1.15,rim:0.10,
+        hemiSky:0xCFE0F2,dirCol:0xFFF4E0}
+};
+function setSky(k){
+  if(!SKYU) return;
+  skyState=k;
+  var s=SKY[k];
+  SKYU.uLow.value.fromArray(s.low);
+  SKYU.uMid.value.fromArray(s.mid);
+  SKYU.uTop.value.fromArray(s.top);
+  scene.background.setHex(s.fog);
+  scene.fog.color.setHex(s.fog);
+  scene.fog.near=s.near; scene.fog.far=s.far;
+  LIGHTS.amb.intensity=s.amb;
+  LIGHTS.hemi.intensity=s.hemi; LIGHTS.hemi.color.setHex(s.hemiSky);
+  LIGHTS.dir.intensity=s.dir;   LIGHTS.dir.color.setHex(s.dirCol);
+  LIGHTS.rim.intensity=s.rim;
+  var app=document.getElementById('app');
+  if(app) app.classList.toggle('daylight',k==='day');
+}
+
+/* ---- procedural surface textures ----------------------------------------
+   Flat-coloured boxes read as toy blocks whatever the lighting. Giving every
+   surface real grain — tile courses, stone coursing with mortar, plaster
+   mottle, plank seams — is what makes the village look built.               */
+function cv(n){ var c=document.createElement('canvas'); c.width=c.height=n||256; return c }
+function mkTex(c,rx,ry){
+  var t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(rx||1,ry||1);
+  t.anisotropy=4;
+  return t;
+}
+function rep(tex,u,v){
+  var t=tex.clone();
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(Math.max(0.35,u),Math.max(0.35,v));
+  t.needsUpdate=true;
+  return t;
+}
+function shade(hex,f){
+  var r=(hex>>16&255)*f, g2=(hex>>8&255)*f, b=(hex&255)*f;
+  return 'rgb('+Math.min(255,r|0)+','+Math.min(255,g2|0)+','+Math.min(255,b|0)+')';
+}
+
+function texTiles(hex){
+  var c=cv(256), g=c.getContext('2d');
+  g.fillStyle=shade(hex,0.55); g.fillRect(0,0,256,256);
+  var rows=9, cols=8, rh=256/rows, cw=256/cols;
+  for(var r2=0;r2<rows;r2++){
+    var off=(r2%2)*cw*0.5;
+    for(var i=-1;i<cols+1;i++){
+      var x=i*cw+off, y=r2*rh;
+      var f=0.78+Math.random()*0.34;
+      g.fillStyle=shade(hex,f);
+      g.fillRect(x+0.8,y+0.8,cw-1.6,rh-1.4);
+      g.fillStyle='rgba(0,0,0,0.30)';                 // shadow under each course
+      g.fillRect(x+0.8,y+rh-2.6,cw-1.6,2.6);
+    }
+  }
+  return mkTex(c);
+}
+function texStone(hex){
+  var c=cv(256), g=c.getContext('2d');
+  g.fillStyle=shade(hex,0.52); g.fillRect(0,0,256,256);   // mortar
+  var y=0;
+  while(y<256){
+    var h=18+Math.random()*14, x=-Math.random()*30;
+    while(x<256){
+      var w=24+Math.random()*34;
+      g.fillStyle=shade(hex,0.74+Math.random()*0.44);
+      g.fillRect(x+1.6,y+1.6,w-3.2,h-3.2);
+      g.fillStyle='rgba(255,255,255,0.07)';
+      g.fillRect(x+1.6,y+1.6,w-3.2,1.6);
+      x+=w;
+    }
+    y+=h;
+  }
+  return mkTex(c);
+}
+function texPlaster(hex){
+  var c=cv(256), g=c.getContext('2d');
+  g.fillStyle=shade(hex,1); g.fillRect(0,0,256,256);
+  for(var i=0;i<150;i++){
+    var r2=8+Math.random()*40;
+    var gr=g.createRadialGradient(Math.random()*256,Math.random()*256,0,0,0,r2);
+    g.globalAlpha=0.05;
+    g.fillStyle=Math.random()<0.5?'#000':'#fff';
+    g.beginPath(); g.arc(Math.random()*256,Math.random()*256,r2,0,TAU); g.fill();
+  }
+  g.globalAlpha=1;
+  g.strokeStyle='rgba(0,0,0,0.13)'; g.lineWidth=1;
+  for(var k=0;k<7;k++){                                    // hairline cracks
+    var x=Math.random()*256,y=Math.random()*256;
+    g.beginPath(); g.moveTo(x,y);
+    for(var s=0;s<5;s++){ x+=(Math.random()-0.5)*40; y+=Math.random()*26; g.lineTo(x,y) }
+    g.stroke();
+  }
+  return mkTex(c);
+}
+function texTimber(hex){
+  var c=cv(256), g=c.getContext('2d');
+  g.fillStyle=shade(hex,1); g.fillRect(0,0,256,256);
+  var planks=7, pw=256/planks;
+  for(var i=0;i<planks;i++){
+    g.fillStyle=shade(hex,0.80+Math.random()*0.38);
+    g.fillRect(i*pw,0,pw-1.5,256);
+    g.strokeStyle='rgba(0,0,0,0.34)'; g.lineWidth=1.6;
+    g.beginPath(); g.moveTo(i*pw+pw-1.2,0); g.lineTo(i*pw+pw-1.2,256); g.stroke();
+    g.strokeStyle='rgba(0,0,0,0.10)'; g.lineWidth=1;
+    for(var k=0;k<5;k++){                                  // grain
+      var gx=i*pw+2+Math.random()*(pw-5);
+      g.beginPath(); g.moveTo(gx,0);
+      for(var y=0;y<256;y+=32) g.lineTo(gx+(Math.random()-0.5)*2.4,y);
+      g.stroke();
+    }
+  }
+  return mkTex(c);
+}
+
+function makeGroundTex(){
+  var c=document.createElement('canvas'); c.width=c.height=512;
+  var g=c.getContext('2d');
+  g.fillStyle='#969CA5'; g.fillRect(0,0,512,512);
+  // speckle
+  var img=g.getImageData(0,0,512,512), d=img.data;
+  for(var i=0;i<d.length;i+=4){
+    var n=(Math.random()-0.5)*46;
+    d[i]=clamp(d[i]+n,0,255); d[i+1]=clamp(d[i+1]+n,0,255); d[i+2]=clamp(d[i+2]+n,0,255);
+  }
+  g.putImageData(img,0,0);
+  // soft clumping so grass and gravel don't read as uniform noise
+  for(var b=0;b<70;b++){
+    var bx=Math.random()*512, bz=Math.random()*512, br=12+Math.random()*40;
+    var rg=g.createRadialGradient(bx,bz,0,bx,bz,br);
+    rg.addColorStop(0,'rgba(0,0,0,0.10)'); rg.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=rg; g.fillRect(bx-br,bz-br,br*2,br*2);
+  }
+  g.strokeStyle='rgba(0,0,0,0.055)'; g.lineWidth=1;
+  for(var k=1;k<4;k++){var p=k*128;g.beginPath();g.moveTo(p,0);g.lineTo(p,512);g.moveTo(0,p);g.lineTo(512,p);g.stroke()}
+  var t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(100,100);
+  return t;
+}
+function makeBlobTex(){
+  var c=document.createElement('canvas'); c.width=c.height=128;
+  var g=c.getContext('2d');
+  var rg=g.createRadialGradient(64,64,0,64,64,64);
+  rg.addColorStop(0,'rgba(0,0,0,0.75)'); rg.addColorStop(0.55,'rgba(0,0,0,0.32)'); rg.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=rg; g.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+}
+
+function buildScene(){
+  var host=$('#view');
+  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.setSize(host.clientWidth,host.clientHeight);
+  host.appendChild(renderer.domElement);
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x141C26);
+  scene.fog=new THREE.Fog(0x141C26,70,660);
+
+  // sky dome — colours live in uniforms so the mode can swap dusk for daylight
+  SKYU={
+    uLow:{value:new THREE.Vector3()},
+    uMid:{value:new THREE.Vector3()},
+    uTop:{value:new THREE.Vector3()}
+  };
+  var skyMat=new THREE.ShaderMaterial({
+    side:THREE.BackSide, depthWrite:false, fog:false,
+    uniforms:SKYU,
+    vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader:[
+      'uniform vec3 uLow; uniform vec3 uMid; uniform vec3 uTop;',
+      'varying vec3 vP;',
+      'void main(){',
+      ' float h=clamp(normalize(vP).y*0.5+0.5,0.0,1.0);',
+      ' vec3 c = h<0.5 ? mix(uLow,uMid,h*2.0) : mix(uMid,uTop,(h-0.5)*2.0);',
+      ' gl_FragColor=vec4(c,1.0);',
+      '}'
+    ].join('\n')
+  });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(2100,28,18),skyMat));
+
+  LIGHTS.amb=new THREE.AmbientLight(0x2A3340,0.60); scene.add(LIGHTS.amb);
+  LIGHTS.hemi=new THREE.HemisphereLight(0x8FA6C2,0x0E131A,0.46); scene.add(LIGHTS.hemi);
+  LIGHTS.dir=new THREE.DirectionalLight(0xFFE2BC,0.52); LIGHTS.dir.position.set(60,90,40); scene.add(LIGHTS.dir);
+  // the shadow frustum is small and rides with the quad, so it stays sharp wherever you fly
+  LIGHTS.dir.castShadow=true;
+  LIGHTS.dir.shadow.mapSize.set(2048,2048);
+  var sc=LIGHTS.dir.shadow.camera;
+  sc.left=-62; sc.right=62; sc.top=62; sc.bottom=-62; sc.near=8; sc.far=420;
+  sc.updateProjectionMatrix();
+  LIGHTS.dir.shadow.bias=-0.0006;
+  LIGHTS.dir.shadow.normalBias=0.035;
+  scene.add(LIGHTS.dir.target);
+  LIGHTS.rim=new THREE.DirectionalLight(0x3fd8e8,0.20); LIGHTS.rim.position.set(-50,25,-60); scene.add(LIGHTS.rim);
+  setSky('dusk');
+
+  buildTerrain();
+  buildTrack();
+  buildVillage();
+  buildDrone();
+
+  blobShadow=new THREE.Mesh(new THREE.CircleGeometry(0.5,24),
+    new THREE.MeshBasicMaterial({map:makeBlobTex(),transparent:true,depthWrite:false,fog:false}));
+  blobShadow.rotation.x=-Math.PI/2; blobShadow.position.y=0.02; scene.add(blobShadow);
+
+  camFPV=new THREE.PerspectiveCamera(CFG.fov,1,0.05,2600);
+  camChase=new THREE.PerspectiveCamera(62,1,0.05,2600);
+  camLOS=new THREE.PerspectiveCamera(38,1,0.05,2600);
+  camLOS.position.set(0,1.7,14);
+  activeCam=camFPV;
+  onResize();
+}
+
+function buildTerrain(){
+  var S=1800,N=224;
+  var geo=new THREE.PlaneGeometry(S,S,N,N);
+  geo.rotateX(-Math.PI/2);
+  var pos=geo.attributes.position, n=pos.count;
+  var col=new Float32Array(n*3);
+  var c=new THREE.Color(), g2=new THREE.Color();
+  var SLATE =new THREE.Color(0x2C3540),   // the flying field
+      DRY   =new THREE.Color(0x4E5238),   // open lowland to the east
+      MEADOW=new THREE.Color(0x3E5734),   // damp grass around the village
+      FOREST=new THREE.Color(0x2B4227),   // wooded lower slopes
+      ROCK  =new THREE.Color(0x4C515A),
+      SCREE =new THREE.Color(0x5E6169),
+      SNOW  =new THREE.Color(0xC9D3DF);
+  var e=7;
+  for(var i=0;i<n;i++){
+    var x=pos.getX(i), z=pos.getZ(i), y=terrainY(x,z);
+    pos.setY(i,y);
+    // central difference gives the gradient; steep ground is rock, flat ground holds soil
+    var gx=(terrainY(x+e,z)-terrainY(x-e,z))/(2*e);
+    var gz=(terrainY(x,z+e)-terrainY(x,z-e))/(2*e);
+    var slope=Math.min(1,Math.hypot(gx,gz)/1.15);
+    var r=Math.hypot(x,z);
+
+    c.copy(DRY).lerp(MEADOW,smoothstep(3,26,y));      // lowland dries out away from the shelf
+    c.lerp(FOREST,smoothstep(20,70,y)*(1-slope*0.45));   // treeline carries well up the flanks
+    c.lerp(ROCK,smoothstep(105,178,y));
+    g2.copy(SCREE); c.lerp(g2,slope*slope*smoothstep(40,120,y));
+    c.lerp(SNOW,smoothstep(215,315,y)*(1-slope*0.7));  // snow caps only, and never on a cliff face
+    c.lerp(SLATE,1-smoothstep(76,106,Math.hypot(x-ARENA.x,z-ARENA.z)));
+    // smooth large-scale tint variation: a uniform rock face reads as plastic
+    var j=0.87+0.26*(0.5+0.5*Math.sin(x*0.037+z*0.021)*Math.cos(z*0.043-x*0.017));
+    col[i*3]=c.r*j; col[i*3+1]=c.g*j; col[i*3+2]=c.b*j;
+  }
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  geo.computeVertexNormals();
+  var gm=new THREE.Mesh(geo,new THREE.MeshStandardMaterial(
+    {map:makeGroundTex(),vertexColors:true,roughness:.96,metalness:0}));
+  gm.receiveShadow=true;      // catches the village, never casts (too costly, no gain)
+  scene.add(gm);
+}
+
+/* =========== the village: eight houses, a barn and a bell tower on the shelf ======== */
+var PADS=[], padGroup;
+function buildVillage(){
+  var G=new THREE.Group(); scene.add(G);
+  var B=VILLAGE.h;
+  var TEX={
+    plasterA:texPlaster(0xBCB2A1), plasterB:texPlaster(0xA69C88), plasterC:texPlaster(0xC3BCA8),
+    stone   :texStone(0x8C8478),   timber  :texTimber(0x6B5340),
+    tileA   :texTiles(0x8A4A32),   tileB   :texTiles(0x4C545F), tileC:texTiles(0x6E5138),
+    dry     :texStone(0x7C7568)
+  };
+  var M={
+    stone  :new THREE.MeshStandardMaterial({map:rep(TEX.stone,2.2,2.2),roughness:.95}),
+    timber :new THREE.MeshStandardMaterial({map:rep(TEX.timber,2,2),roughness:.9}),
+    trim   :new THREE.MeshStandardMaterial({color:0x3C332A,roughness:.85}),
+    win    :new THREE.MeshStandardMaterial({color:0x141920,emissive:0xFFB454,emissiveIntensity:.85,roughness:.3}),
+    shutter:new THREE.MeshStandardMaterial({map:rep(TEX.timber,0.5,1),color:0x9AA6A0,roughness:.88}),
+    hedge  :new THREE.MeshStandardMaterial({color:0x31482A,roughness:1}),
+    road   :new THREE.MeshStandardMaterial({map:rep(TEX.dry,6,6),color:0x8C877E,roughness:1}),
+    earth  :new THREE.MeshStandardMaterial({color:0x453729,roughness:1}),
+    crop   :new THREE.MeshStandardMaterial({color:0x46602F,roughness:1}),
+    wall   :new THREE.MeshStandardMaterial({map:rep(TEX.dry,3,0.55),roughness:.98}),
+    log    :new THREE.MeshStandardMaterial({map:rep(TEX.timber,0.3,1),color:0xA88A63,roughness:.95})
+  };
+  function box(w,h,d,x,y,z,mat,ry){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    m.position.set(x,y,z); if(ry)m.rotation.y=ry; G.add(m); return m;
+  }
+  function solid(x,z,w,h,d){ WORLD.boxes.push({x:x,y:B+h/2,z:z,hx:w/2,hy:h/2,hz:d/2}) }
+
+  // lane and square surfacing
+  var sq=vWorld(0,-28);
+  box(15,0.12,15,sq.x,B+0.06,sq.z,M.road);
+  var ln=vWorld(0,-2);
+  box(9,0.1,58,ln.x,B+0.05,ln.z,M.road);
+
+  // built into a local group so each house can sit at its own slight angle —
+  // a village grows over centuries, it does not line up on a grid
+  function house(lx,lz,w,d,storeys,flatRoof,wallKey,roofKey,rot,rh0){
+    var p=vWorld(lx,lz), h=storeys*3.15, rh=flatRoof?0.5:(rh0||2.6);
+    rot=rot||0;
+    // textures are scaled off this building's own dimensions, so courses and
+    // plank widths stay a consistent real size however big the house is
+    var wallMat=new THREE.MeshStandardMaterial({map:rep(TEX[wallKey],w/2.8,h/2.8),roughness:.93});
+    var gableMat=new THREE.MeshStandardMaterial({map:rep(TEX[wallKey],0.36,0.36),roughness:.93,side:THREE.DoubleSide});
+    var hg=new THREE.Group(); hg.position.set(p.x,B,p.z); hg.rotation.y=rot; G.add(hg);
+    function lb(sw,sh,sd,x,y,z,mat){
+      var m=new THREE.Mesh(new THREE.BoxGeometry(sw,sh,sd),mat);
+      m.position.set(x,y,z); hg.add(m); return m;
+    }
+    lb(w,h,d,0,h/2,0,wallMat);
+    lb(w+0.26,0.95,d+0.26,0,0.475,0,M.stone);                   // stone plinth
+    for(var s=1;s<storeys;s++) lb(w+0.16,0.18,d+0.16,0,s*3.15,0,M.trim);
+    for(var s2=0;s2<storeys;s2++){
+      var wy=s2*3.15+1.75;
+      [-1,1].forEach(function(sx){
+        lb(0.95,1.2,0.1,sx*w*0.24,wy, d/2+0.02,M.win);
+        lb(0.95,1.2,0.1,sx*w*0.24,wy,-d/2-0.02,M.win);
+        lb(0.1,1.2,0.95, w/2+0.02,wy,sx*d*0.24,M.win);
+        lb(0.1,1.2,0.95,-w/2-0.02,wy,sx*d*0.24,M.win);
+        // frame and shutters on the street face
+        lb(1.25,1.5,0.07,sx*w*0.24,wy,d/2+0.07,M.trim);
+        [-1,1].forEach(function(sg){
+          lb(0.42,1.36,0.06,sx*w*0.24+sg*0.82,wy,d/2+0.12,M.shutter);
+        });
+      });
+    }
+    lb(1.0,2.1,0.12,0,1.05,d/2+0.03,M.trim);                    // door
+    lb(1.6,0.14,0.9,0,2.25,d/2+0.42,M.timber);                  // door hood
+    if(flatRoof){
+      lb(w+0.3,0.3,d+0.3,0,h+0.15,0,new THREE.MeshStandardMaterial(
+        {map:rep(TEX[roofKey],w/1.4,d/1.4),roughness:.95}));
+      [1,-1].forEach(function(s3){lb(w+0.3,0.5,0.16,0,h+0.55,s3*(d/2+0.15),M.trim)});
+      [1,-1].forEach(function(s4){lb(0.16,0.5,d+0.3,s4*(w/2+0.15),h+0.55,0,M.trim)});
+    } else {
+      var ang=Math.atan2(rh,w/2), len=Math.hypot(w/2,rh)+0.45;
+      var roofMat=new THREE.MeshStandardMaterial({map:rep(TEX[roofKey],len/1.25,(d+0.8)/1.25),roughness:.95});
+      [-1,1].forEach(function(s5){
+        var m=new THREE.Mesh(new THREE.BoxGeometry(len,0.16,d+0.8),roofMat);
+        m.position.set(s5*w/4,h+rh/2,0); m.rotation.z=-s5*ang; hg.add(m);
+        var f=new THREE.Mesh(new THREE.BoxGeometry(len,0.22,0.1),M.trim);   // fascia along the eave
+        f.position.set(s5*w/4,h+rh/2-0.13,(d+0.8)/2); f.rotation.z=-s5*ang; hg.add(f);
+        var f2=f.clone(); f2.position.z=-(d+0.8)/2; hg.add(f2);
+      });
+      var sh=new THREE.Shape();
+      sh.moveTo(-w/2,0); sh.lineTo(w/2,0); sh.lineTo(0,rh); sh.lineTo(-w/2,0);
+      [-1,1].forEach(function(s6){
+        var gm=new THREE.Mesh(new THREE.ShapeGeometry(sh),gableMat);
+        gm.position.set(0,h,s6*d/2); hg.add(gm);
+      });
+      lb(0.7,1.5,0.7,w*0.28,h+rh*0.75,-d*0.2,M.stone);          // chimney
+      lb(0.86,0.2,0.86,w*0.28,h+rh*0.75+0.82,-d*0.2,M.trim);    // chimney cap
+    }
+    // rotation grows the footprint; pad the collision box rather than under-report it
+    var ca=Math.abs(Math.cos(rot)), sa=Math.abs(Math.sin(rot));
+    solid(p.x,p.z,w*ca+d*sa+0.4, h+rh+0.4, d*ca+w*sa+0.9);
+    return {x:p.x,z:p.z,top:B+h+(flatRoof?0.3:rh),rot:rot};
+  }
+
+  // kitchen gardens behind low dry-stone walls
+  function garden(lx,lz,gw,gd,rot){
+    var p=vWorld(lx,lz);
+    var gg=new THREE.Group(); gg.position.set(p.x,B,p.z); gg.rotation.y=rot||0; G.add(gg);
+    function gb(sw,sh,sd,x,y,z,mat){
+      var m=new THREE.Mesh(new THREE.BoxGeometry(sw,sh,sd),mat);
+      m.position.set(x,y,z); gg.add(m);
+    }
+    gb(gw,0.1,gd,0,0.05,0,M.earth);
+    var rows=Math.max(2,Math.floor(gd/1.3));
+    for(var i=0;i<rows;i++) gb(gw-1.0,0.16,0.42,0,0.16,-gd/2+0.9+i*((gd-1.4)/(rows-1||1)),M.crop);
+    [1,-1].forEach(function(s){
+      gb(gw+0.5,0.52,0.3,0,0.26,s*(gd/2+0.15),M.wall);
+      gb(0.3,0.52,gd+0.5,s*(gw/2+0.15),0.26,0,M.wall);
+    });
+    WORLD.boxes.push({x:p.x,y:B+0.26,z:p.z,hx:gw/2+0.4,hy:0.26,hz:gd/2+0.4});
+  }
+
+  function woodpile(lx,lz,rot){
+    var p=vWorld(lx,lz);
+    var wg=new THREE.Group(); wg.position.set(p.x,B,p.z); wg.rotation.y=rot||0; G.add(wg);
+    for(var r2=0;r2<3;r2++) for(var cI=0;cI<5;cI++){
+      var lg=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,1.7,7),M.log);
+      lg.rotation.z=Math.PI/2;
+      lg.position.set(0,0.15+r2*0.27,-0.55+cI*0.27);
+      wg.add(lg);
+    }
+    WORLD.boxes.push({x:p.x,y:B+0.45,z:p.z,hx:1.0,hy:0.45,hz:0.9});
+  }
+
+  // four houses each side of the lane, tight enough that the gap is a real line.
+  // lx is derived from each width so the lane stays an even 8.6 m however they vary.
+  var roofPad=null;
+  var LANE=4.3;
+  [{lz:-19.5,w:8.4,d:7.2,st:2,rot: 0.06,rh:2.7,wm:'plasterA',rm:'tileA'},
+   {lz:-6.8, w:7.6,d:6.6,st:2,rot:-0.09,rh:2.4,wm:'stone',   rm:'tileB'},
+   {lz:  6.4,w:9.0,d:7.6,st:3,rot: 0.04,rh:2.9,wm:'timber',  rm:'tileC'},
+   {lz: 19.8,w:7.8,d:7.0,st:2,rot:-0.05,rh:2.5,wm:'plasterC',rm:'tileB'}
+  ].forEach(function(o){ house(-(LANE+o.w/2),o.lz,o.w,o.d,o.st,false,o.wm,o.rm,o.rot,o.rh) });
+
+  [{lz:-20.2,w:7.8,d:7.0,st:2,rot:-0.07,rh:2.5,wm:'stone',   rm:'tileB'},
+   {lz: -6.5,w:8.2,d:7.4,st:2,rot: 0.03,flat:1,              wm:'plasterB',rm:'tileB'},
+   {lz:  7.0,w:7.6,d:6.8,st:2,rot: 0.10,rh:2.3,wm:'plasterA',rm:'tileA'},
+   {lz: 19.4,w:8.6,d:7.4,st:3,rot:-0.04,rh:2.8,wm:'timber',  rm:'tileA'}
+  ].forEach(function(o){
+    var r=house(LANE+o.w/2,o.lz,o.w,o.d,o.st,!!o.flat,o.wm,o.rm,o.rot,o.rh);
+    if(o.flat) roofPad={x:r.x,y:r.top,z:r.z};
+  });
+
+  // barn with a flat roof, and a bell tower as a landmark you can navigate by
+  var barn=house(-24,2,12,9,2,true,'timber','tileB',-0.05);
+
+  // kitchen gardens, woodpiles and a track running east out of the village
+  garden(-17,-30, 9,6.5, 0.05);
+  garden( 17,-30, 8,6,  -0.08);
+  garden(-31, 19, 8,7,   0.10);
+  garden( 19, 27, 8,6,  -0.04);
+  woodpile(-13.5,-12.5, 0.18);
+  woodpile( 12.8, 15.5,-0.3);
+  woodpile(-26.5, -8.5, 0.9);
+  var tk=vWorld(14.5,-29.2);
+  box(30,0.1,4.6,tk.x,B+0.05,tk.z,M.road,0.07);
+  var tw=vWorld(22,-20);
+  box(4.2,15,4.2,tw.x,B+7.5,tw.z,M.stone);
+  box(5.0,0.5,5.0,tw.x,B+15.2,tw.z,M.trim);
+  var spire=new THREE.Mesh(new THREE.ConeGeometry(3.1,4.2,4),M.tileB);
+  spire.position.set(tw.x,B+17.5,tw.z); spire.rotation.y=Math.PI/4; G.add(spire);
+  box(1.1,1.4,0.12,tw.x,B+12.4,tw.z+2.15,M.win);
+  solid(tw.x,tw.z,5.0,20,5.0);
+
+  // hedges lining the lane — the gap between them is the line you have to hold
+  for(var hz=-26;hz<=26;hz+=6.5){
+    [-3.1,3.1].forEach(function(hx){
+      var p=vWorld(hx,hz);
+      box(0.7,1.2+Math.random()*0.35,5.2,p.x,B+0.62,p.z,M.hedge);
+      WORLD.boxes.push({x:p.x,y:B+0.62,z:p.z,hx:0.35,hy:0.62,hz:2.6});
+    });
+  }
+
+  // conifers, instanced — kept off the lane, the buildings and every pad
+  // keep-clear discs: the tower, each landing pad, the barn, and the spotter's
+  // stand — a tree grown on that last one puts the camera inside a canopy
+  var CLEAR=[{x:22,z:-20,r:8},{x:26,z:14,r:9},{x:0,z:32,r:9},{x:-24,z:2,r:11},
+             {x:LOS_STAND.x,z:LOS_STAND.z,r:16}];
+  var spots=[];
+  for(var i=0;i<240;i++){
+    var a=Math.random()*TAU, rr=26+Math.random()*95;
+    var lx=Math.cos(a)*rr, lz=Math.sin(a)*rr*0.85;
+    if(Math.abs(lx)<16 && Math.abs(lz)<34) continue;         // lane and the eight houses
+    // woodland crowds the mountain flank and thins toward the open lowland
+    if(lx>0 && Math.random()<lx/105) continue;
+    var skip=false;
+    for(var q=0;q<CLEAR.length;q++){
+      var cc=CLEAR[q];
+      if(cc.r && Math.hypot(lx-cc.x,lz-cc.z)<cc.r){skip=true;break}
+    }
+    if(skip) continue;
+    var p=vWorld(lx,lz);
+    spots.push({x:p.x,z:p.z,y:terrainY(p.x,p.z),s:0.75+Math.random()*0.85});
+  }
+  // copses scattered over the lowland so the plain reads as farmland, not a green void
+  for(var cN=0;cN<22;cN++){
+    var ca=Math.random()*TAU, cr=150+Math.random()*470;
+    var cx=Math.cos(ca)*cr, cz=Math.sin(ca)*cr;
+    if(Math.hypot(cx,cz)<110) continue;                                     // flying field stays clear
+    if(Math.abs(cx-VILLAGE.x)<64 && Math.abs(cz-VILLAGE.z)<70) continue;    // village already wooded
+    var cy=terrainY(cx,cz);
+    if(cy>125) continue;                                                    // nothing grows on the high rock
+    var many=3+Math.floor(Math.random()*5);
+    for(var cT=0;cT<many;cT++){
+      var ox=cx+(Math.random()*2-1)*11, oz=cz+(Math.random()*2-1)*11;
+      spots.push({x:ox,z:oz,y:terrainY(ox,oz),s:0.8+Math.random()*0.95});
+    }
+  }
+  var trunkM=new THREE.MeshStandardMaterial({color:0x3C3024,roughness:.95});
+  var leafM =new THREE.MeshStandardMaterial({color:0x273D24,roughness:1});
+  var tI=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.17,0.24,2.3,6),trunkM,spots.length);
+  // two stacked cones give a conifer a layered silhouette instead of a traffic cone
+  var coneG=new THREE.ConeGeometry(1.55,4.6,8);
+  var skirtG=new THREE.ConeGeometry(2.05,2.6,8); skirtG.translate(0,-1.55,0);
+  var cI=new THREE.InstancedMesh(coneG,leafM,spots.length);
+  var sI=new THREE.InstancedMesh(skirtG,leafM,spots.length);
+  var mtx=new THREE.Matrix4(), qt=new THREE.Quaternion(), sc=new THREE.Vector3(), ps=new THREE.Vector3();
+  spots.forEach(function(t,i){
+    sc.set(t.s,t.s,t.s);
+    ps.set(t.x,t.y+1.15*t.s,t.z); mtx.compose(ps,qt,sc); tI.setMatrixAt(i,mtx);
+    ps.set(t.x,t.y+(2.3+2.3)*t.s,t.z); mtx.compose(ps,qt,sc); cI.setMatrixAt(i,mtx);
+    ps.set(t.x,t.y+(2.3+2.0)*t.s,t.z); mtx.compose(ps,qt,sc); sI.setMatrixAt(i,mtx);
+    if(t.s>0.95) WORLD.poles.push({x:t.x,z:t.z,r:0.55,h:t.y+6.6*t.s});
+  });
+  tI.instanceMatrix.needsUpdate=true; cI.instanceMatrix.needsUpdate=true; sI.instanceMatrix.needsUpdate=true;
+  G.add(tI); G.add(cI); G.add(sI);
+
+  // everything the village is built from both casts and catches the sun
+  G.traverse(function(o){ if(o.isMesh||o.isInstancedMesh){ o.castShadow=true; o.receiveShadow=true } });
+
+  // ---- landing pads the intruders are trying to reach ----
+  padGroup=new THREE.Group(); padGroup.visible=false; scene.add(padGroup);
+  function pad(name,x,y,z){
+    var g=new THREE.Group(); g.position.set(x,y,z);
+    var ring=new THREE.Mesh(new THREE.RingGeometry(1.5,2.0,32),
+      new THREE.MeshBasicMaterial({color:0x8B7BF0,transparent:true,opacity:.85,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2; ring.position.y=0.06; g.add(ring);
+    var disc=new THREE.Mesh(new THREE.CircleGeometry(1.45,28),
+      new THREE.MeshBasicMaterial({color:0x8B7BF0,transparent:true,opacity:.16,side:THREE.DoubleSide}));
+    disc.rotation.x=-Math.PI/2; disc.position.y=0.05; g.add(disc);
+    var beam=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,26,8,1,true),
+      new THREE.MeshBasicMaterial({color:0x8B7BF0,transparent:true,opacity:.10,side:THREE.DoubleSide,depthWrite:false}));
+    beam.position.y=13; g.add(beam);
+    padGroup.add(g);
+    PADS.push({name:name,x:x,y:y,z:z,obj:g,ring:ring,disc:disc,beam:beam,busy:null});
+  }
+  var s1=vWorld(0,-28),   s2=vWorld(26,14),  s3=vWorld(0,32);
+  pad('SQUARE', s1.x,B+0.12,s1.z);
+  pad('TERRACE',s2.x,terrainY(s2.x,s2.z)+0.12,s2.z);
+  pad('MEADOW', s3.x,terrainY(s3.x,s3.z)+0.12,s3.z);
+  pad('BARN',   barn.x,barn.top+0.1,barn.z);
+  if(roofPad) pad('ROOFTOP',roofPad.x,roofPad.y+0.1,roofPad.z);
+}
+
+function gateMesh(w,h,t,color){
+  var g=new THREE.Group();
+  var mat=new THREE.MeshStandardMaterial({color:color,emissive:color,emissiveIntensity:.62,roughness:.5,metalness:.15});
+  var dk=new THREE.MeshStandardMaterial({color:0x1a1f28,roughness:.85});
+  var d=0.16;
+  function bar(sx,sy,x,y,m){var b=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,d),m);b.position.set(x,y,0);g.add(b);return b}
+  bar(w+2*t,t,0, h/2+t/2,mat);
+  bar(w+2*t,t,0,-h/2-t/2,mat);
+  bar(t,h,-w/2-t/2,0,mat);
+  bar(t,h, w/2+t/2,0,mat);
+  // corner blocks read as a built object rather than four sticks
+  [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(s){
+    var c=new THREE.Mesh(new THREE.BoxGeometry(t*1.7,t*1.7,d*1.15),dk);
+    c.position.set(s[0]*(w/2+t/2),s[1]*(h/2+t/2),0); g.add(c);
+  });
+  return g;
+}
+
+var TRACK=[
+  {x:ARENA.x+0, z:ARENA.z-22,yaw:0,    y:2.0},
+  {x:ARENA.x+20,z:ARENA.z-38,yaw:-0.85,y:2.6},
+  {x:ARENA.x+38,z:ARENA.z-16,yaw:-1.95,y:1.7},
+  {x:ARENA.x+29,z:ARENA.z+9, yaw:-2.65,y:3.2},
+  {x:ARENA.x+2, z:ARENA.z+16,yaw:3.02, y:1.8},
+  {x:ARENA.x-20,z:ARENA.z-3, yaw:2.05, y:2.5}
+];
+var ORBIT_POLE={x:ARENA.x-34,z:ARENA.z+22,h:11,r:0.34};
+var HOVER_BOX={x:ARENA.x,y:2.0,z:ARENA.z-4,s:3.0};
+var hoverBoxObj,orbitRingObj,gateHighlights=[];
+
+function buildTrack(){
+  var W=3.0,H=3.0,T=0.2;
+  TRACK.forEach(function(g,i){
+    var m=gateMesh(W,H,T,i===0?0x3FD8E8:0xFF9E2C);
+    m.position.set(g.x,g.y,g.z); m.rotation.y=g.yaw;
+    scene.add(m);
+    gateHighlights.push(m);
+    WORLD.gates.push({x:g.x,y:g.y,z:g.z,yaw:g.yaw,w:W,h:H,t:T,d:0.2,prev:0,mesh:m});
+  });
+
+  // poles
+  function pole(x,z,h,r){
+    var grp=new THREE.Group();
+    var n=Math.max(2,Math.round(h/1.4));
+    for(var i=0;i<n;i++){
+      var seg=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h/n,10),
+        new THREE.MeshStandardMaterial({color:i%2?0xE8ECF2:0xFF4D5E,roughness:.7}));
+      seg.position.set(x,h/n*(i+0.5),z); grp.add(seg);
+    }
+    scene.add(grp);
+    WORLD.poles.push({x:x,z:z,h:h,r:r});
+  }
+  pole(ORBIT_POLE.x,ORBIT_POLE.z,ORBIT_POLE.h,ORBIT_POLE.r);
+  pole(ARENA.x-14,ARENA.z+34,8,0.3); pole(ARENA.x+12,ARENA.z+40,8,0.3);
+
+  // a few obstacle blocks for freestyle lines
+  var blocks=[[ARENA.x-8,0,ARENA.z-52,10,5,4],[ARENA.x+16,0,ARENA.z-58,6,8,4],
+              [ARENA.x+44,0,ARENA.z+26,12,3.5,6],[ARENA.x-40,0,ARENA.z-30,7,6,7]];
+  blocks.forEach(function(b){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(b[3],b[4],b[5]),
+      new THREE.MeshStandardMaterial({color:0x1c222c,roughness:.92}));
+    m.position.set(b[0],b[4]/2,b[2]); scene.add(m);
+    var edge=new THREE.Mesh(new THREE.BoxGeometry(b[3]*1.002,0.06,b[5]*1.002),
+      new THREE.MeshBasicMaterial({color:0x3FD8E8}));
+    edge.position.set(b[0],b[4],b[2]); edge.material.opacity=.5; edge.material.transparent=true; scene.add(edge);
+    WORLD.boxes.push({x:b[0],y:b[4]/2,z:b[2],hx:b[3]/2,hy:b[4]/2,hz:b[5]/2});
+  });
+
+  // hover box (wireframe, shown only in that drill)
+  var hb=new THREE.Mesh(new THREE.BoxGeometry(HOVER_BOX.s,HOVER_BOX.s,HOVER_BOX.s),
+    new THREE.MeshBasicMaterial({color:0x3FD8E8,wireframe:true,transparent:true,opacity:.35}));
+  hb.position.set(HOVER_BOX.x,HOVER_BOX.y,HOVER_BOX.z);
+  hb.visible=false; scene.add(hb); hoverBoxObj=hb;
+
+  // orbit target ring
+  var ring=new THREE.Mesh(new THREE.RingGeometry(5.7,6.3,64),
+    new THREE.MeshBasicMaterial({color:0x8B7BF0,transparent:true,opacity:.45,side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2; ring.position.set(ORBIT_POLE.x,0.05,ORBIT_POLE.z);
+  ring.visible=false; scene.add(ring); orbitRingObj=ring;
+
+  WORLD.hitTest=function(p,r){
+    var i,g,pl,b;
+    for(i=0;i<WORLD.gates.length;i++){
+      g=WORLD.gates[i];
+      var dx=p.x-g.x, dz=p.z-g.z, c=Math.cos(-g.yaw), s=Math.sin(-g.yaw);
+      var lx=dx*c-dz*s, lz=dx*s+dz*c, ly=p.y-g.y;
+      if(Math.abs(lz)<g.d/2+r){
+        var ow=g.w/2+g.t, oh=g.h/2+g.t;
+        var inOuter=Math.abs(lx)<=ow+r && Math.abs(ly)<=oh+r;
+        var inClear=Math.abs(lx)<g.w/2-r && Math.abs(ly)<g.h/2-r;
+        if(inOuter&&!inClear) return true;
+      }
+    }
+    for(i=0;i<WORLD.poles.length;i++){
+      pl=WORLD.poles[i];
+      if(p.y>pl.h) continue;
+      var ex=p.x-pl.x, ez=p.z-pl.z, rr=pl.r+r;
+      if(ex*ex+ez*ez < rr*rr) return true;
+    }
+    for(i=0;i<WORLD.boxes.length;i++){
+      b=WORLD.boxes[i];
+      if(Math.abs(p.x-b.x)<b.hx+r && Math.abs(p.y-b.y)<b.hy+r && Math.abs(p.z-b.z)<b.hz+r) return true;
+    }
+    return false;
+  };
+}
+
+function buildDrone(){
+  droneObj=new THREE.Group();
+  var body=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.035,0.15),
+    new THREE.MeshStandardMaterial({color:0x11161d,roughness:.55,metalness:.35}));
+  droneObj.add(body);
+  // camera pod
+  var pod=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.05,0.045),
+    new THREE.MeshStandardMaterial({color:0x1c232d,roughness:.5}));
+  pod.position.set(0,0.035,-0.055); droneObj.add(pod);
+  var lens=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.012,12),
+    new THREE.MeshStandardMaterial({color:0x05070a,roughness:.2,metalness:.7}));
+  lens.rotation.x=Math.PI/2; lens.position.set(0,0.04,-0.08); droneObj.add(lens);
+
+  var armMat=new THREE.MeshStandardMaterial({color:0x0d1117,roughness:.6,metalness:.4});
+  var motMat=new THREE.MeshStandardMaterial({color:0x2a323e,roughness:.4,metalness:.6});
+  var corners=[[1,-1],[1,1],[-1,1],[-1,-1]];
+  corners.forEach(function(c,i){
+    var ax=c[0]*0.105, az=c[1]*0.105;
+    var arm=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.01,0.13),armMat);
+    arm.position.set(ax*0.5,0,az*0.5);
+    arm.rotation.y=Math.atan2(ax,az);
+    droneObj.add(arm);
+    var mot=new THREE.Mesh(new THREE.CylinderGeometry(0.017,0.017,0.024,10),motMat);
+    mot.position.set(ax,0.016,az); droneObj.add(mot);
+    var prop=new THREE.Mesh(new THREE.CircleGeometry(0.063,20),
+      new THREE.MeshBasicMaterial({color:0x9fb4d0,transparent:true,opacity:.20,side:THREE.DoubleSide}));
+    prop.rotation.x=-Math.PI/2; prop.position.set(ax,0.031,az);
+    droneObj.add(prop); propMeshes.push(prop);
+  });
+  // rear LEDs so orientation reads in chase/LOS view
+  [[-0.09,0.09],[0.09,0.09]].forEach(function(c){
+    var led=new THREE.Mesh(new THREE.SphereGeometry(0.016,8,6),
+      new THREE.MeshBasicMaterial({color:0xFF4D5E}));
+    led.position.set(c[0],0.012,c[1]); droneObj.add(led);
+  });
+  var nose=new THREE.Mesh(new THREE.SphereGeometry(0.013,8,6),new THREE.MeshBasicMaterial({color:0x54E08A}));
+  nose.position.set(0,0.012,-0.09); droneObj.add(nose);
+  droneObj.traverse(function(o){ if(o.isMesh) o.castShadow=true });
+  scene.add(droneObj);
+}
+
+/* =======================================================================
+   4b. CATCH — heavier, slower drones running approaches onto the pads
+   ======================================================================= */
+var prevPlayer=new THREE.Vector3();
+var _s0=new THREE.Vector3(), _sv=new THREE.Vector3();
+/* Closest approach between two moving points over one frame. At a 30 m/s closing
+   speed a per-frame point test misses by half a metre, so a direct hit needs this. */
+function sweptHit(a0,a1,b0,b1,R){
+  _s0.subVectors(a0,b0);
+  _sv.set((a1.x-a0.x)-(b1.x-b0.x),(a1.y-a0.y)-(b1.y-b0.y),(a1.z-a0.z)-(b1.z-b0.z));
+  var vv=_sv.lengthSq(), t=0;
+  if(vv>1e-9) t=clamp(-_s0.dot(_sv)/vv,0,1);
+  var mx=_s0.x+_sv.x*t, my=_s0.y+_sv.y*t, mz=_s0.z+_sv.z*t;
+  return (mx*mx+my*my+mz*mz) < R*R;
+}
+
+var CATCH={
+  on:false, adv:false, list:[], caught:0, landed:0, wave:1, spawnT:0, over:false, group:null,
+  hits:[], flash:0, LOSE:5,
+  reset:function(){
+    this.despawnAll();
+    this.caught=0; this.landed=0; this.wave=1; this.spawnT=this.adv?2.5:1.5; this.over=false;
+    this.hits.length=0; this.flash=0;
+    PADS.forEach(function(p){ p.busy=null; p.ring.material.color.setHex(0x8B7BF0) });
+  },
+  despawnAll:function(){
+    var g=this.group;
+    this.list.forEach(function(d){ if(g)g.remove(d.obj) });
+    this.list.length=0;
+  },
+  ensureGroup:function(){ if(!this.group){this.group=new THREE.Group();scene.add(this.group)} },
+  SEARCH_ALT:15,
+  maxActive:function(){
+    if(!this.adv) return Math.min(6,1+this.wave);
+    return CFG.waveMode==='seq' ? 1 : 3;
+  },
+  speed:function(){ return this.adv ? 16*CFG.tgtSpeed : Math.min(13,7+this.wave*0.9) },
+  searchSpeed:function(){ return clamp(this.speed()*0.38,4,14) },
+  // a loiter waypoint over one of the candidate zones, just above the rooftops
+  pickWaypoint:function(d){
+    var p=PADS[Math.floor(Math.random()*PADS.length)]||d.pad;
+    d.wp=new THREE.Vector3(
+      p.x+(Math.random()*2-1)*9,
+      p.y+this.SEARCH_ALT+Math.random()*5,
+      p.z+(Math.random()*2-1)*9);
+    d.wpT=3+Math.random()*3;
+  },
+
+  makeMesh:function(){
+    var g=new THREE.Group();
+    // in daylight they read as dark silhouettes, which is what you actually spot
+    var body=new THREE.MeshStandardMaterial(
+      this.adv?{color:0x1B1F26,roughness:.75,metalness:.15}:{color:0x39414D,roughness:.6,metalness:.35});
+    var b=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.10,0.42),body); g.add(b);
+    var cargo=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.16,0.24),
+      new THREE.MeshStandardMaterial({color:this.adv?0x141820:0x22282F,roughness:.8}));
+    cargo.position.y=-0.12; g.add(cargo);
+    var arm=new THREE.MeshStandardMaterial({color:0x2A313A,roughness:.7});
+    var props=[];
+    [[1,-1],[1,1],[-1,1],[-1,-1]].forEach(function(c){
+      var ax=c[0]*0.30, az=c[1]*0.30;
+      var a=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.03,0.36),arm);
+      a.position.set(ax*0.5,0,az*0.5); a.rotation.y=Math.atan2(ax,az); g.add(a);
+      var m=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.07,8),body);
+      m.position.set(ax,0.05,az); g.add(m);
+      var p=new THREE.Mesh(new THREE.CircleGeometry(0.19,18),
+        new THREE.MeshBasicMaterial({color:0xB9C6D6,transparent:true,opacity:.26,side:THREE.DoubleSide}));
+      p.rotation.x=-Math.PI/2; p.position.set(ax,0.09,az); g.add(p); props.push(p);
+    });
+    var bcn=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,6),
+      new THREE.MeshBasicMaterial({color:0xFF4D5E}));
+    bcn.position.y=0.11; g.add(bcn);
+    g.userData.props=props; g.userData.beacon=bcn;
+    return g;
+  },
+
+  spawn:function(){
+    var free=PADS.filter(function(p){return !p.busy});
+    if(!free.length) return;
+    var pad=free[Math.floor(Math.random()*free.length)];
+    this.ensureGroup();
+    var a=Math.random()*TAU, R=this.adv?(520+Math.random()*140):72;
+    var sx=pad.x+Math.cos(a)*R, sz=pad.z+Math.sin(a)*R;
+    var sy=this.adv ? Math.max(terrainY(sx,sz)+30, pad.y+58)
+                    : Math.max(terrainY(sx,sz)+9, VILLAGE.h+26);
+    var d={
+      obj:this.makeMesh(),
+      p:new THREE.Vector3(sx,sy,sz), pPrev:new THREE.Vector3(sx,sy,sz),
+      v:new THREE.Vector3(), pad:pad, state:'cruise', t:0, fade:1, baseScale:1,
+      jink:Math.random()*TAU,
+      searchT:this.adv?CFG.searchTime:0, wp:null, wpT:0
+    };
+    pad.busy=d;
+    pad.ring.material.color.setHex(0xFF9E2C);
+    d.obj.position.copy(d.p);
+    this.group.add(d.obj);
+    this.list.push(d);
+  },
+
+  update:function(dt){
+    if(!this.on) return;
+    for(var hI=this.hits.length-1;hI>=0;hI--){
+      this.hits[hI].t+=dt;
+      if(this.hits[hI].t>0.9) this.hits.splice(hI,1);
+    }
+    this.flash=Math.max(0,this.flash-dt*1.5);
+
+    if(!this.over){
+      this.spawnT-=dt;
+      var live=0;
+      for(var q=0;q<this.list.length;q++){
+        var s0=this.list[q].state;
+        if(s0==='cruise'||s0==='search'||s0==='descend') live++;
+      }
+      if(this.spawnT<=0 && live<this.maxActive()){
+        this.spawn();
+        this.spawnT=this.adv?(6+Math.random()*4):(4.5+Math.random()*3);
+      }
+    }
+
+    var sp=this.speed();
+    var tgtR=this.adv?0.30:1.70;                       // only a real contact counts in intercept
+    var vh=(renderer&&renderer.domElement.clientHeight)||900;
+    var perPx=2*Math.tan(activeCam.fov*D2R/2)/vh;      // world units per screen pixel, per unit distance
+
+    for(var i=this.list.length-1;i>=0;i--){
+      var d=this.list[i];
+      d.t+=dt;
+      var pr=d.obj.userData.props;
+      for(var k=0;k<pr.length;k++) pr[k].rotation.z+=dt*(k%2?26:-26);
+      d.obj.userData.beacon.visible=(!this.adv)&&(Math.floor(d.t*3)%2===0);
+      d.pPrev.copy(d.p);
+
+      if(d.state==='cruise'){
+        var horiz=Math.hypot(d.pad.x-d.p.x,d.pad.z-d.p.z);
+        var lowAlt=(this.adv&&d.searchT>0)?this.SEARCH_ALT:3;
+        var ty=this.adv
+          ? d.pad.y+lowAlt+clamp((horiz-10)/170,0,1)*(57-lowAlt)   // skylined far out, low on arrival
+          : Math.max(d.pad.y+16,terrainY(d.pad.x,d.pad.z)+16);
+        var dir=_tmpB.set(d.pad.x-d.p.x,ty-d.p.y,d.pad.z-d.p.z).normalize().multiplyScalar(sp);
+        var pd2=Math.hypot(Q.p.x-d.p.x,Q.p.z-d.p.z);
+        var evR=this.adv?26:16;
+        if(pd2<evR){
+          d.jink+=dt*1.7;
+          var ev=(1-pd2/evR)*sp*(this.adv?0.38:0.55);
+          dir.x+=Math.cos(d.jink)*ev; dir.z+=Math.sin(d.jink)*ev;
+          dir.y+=Math.sin(d.jink*0.7)*ev*0.4;
+        }
+        d.v.lerp(dir,1-Math.exp(-dt*(this.adv?1.1:1.6)));
+        if(this.adv){
+          if(d.searchT>0){ if(horiz<26){ d.state='search'; this.pickWaypoint(d) } }
+          else if(horiz<5) d.state='descend';
+        }
+        else if(horiz<3.5 && Math.abs(d.p.y-ty)<6) d.state='descend';
+      }
+      else if(d.state==='search'){
+        // quarters the village low and slow, looking over the candidate zones
+        d.searchT-=dt; d.wpT-=dt;
+        var padH=Math.hypot(d.pad.x-d.p.x,d.pad.z-d.p.z);
+        if(d.searchT<=0){
+          d.wp.set(d.pad.x,d.pad.y+this.SEARCH_ALT*0.55,d.pad.z);   // time up: commit to its pad
+          if(padH<7){ d.state='descend' }
+        } else if(!d.wp || d.wpT<=0 || d.p.distanceTo(d.wp)<6){
+          this.pickWaypoint(d);
+        }
+        var ss=this.searchSpeed();
+        var sdir=_tmpB.set(d.wp.x-d.p.x,d.wp.y-d.p.y,d.wp.z-d.p.z);
+        if(sdir.lengthSq()>1e-6) sdir.normalize().multiplyScalar(ss); else sdir.set(0,0,0);
+        var spd2=Math.hypot(Q.p.x-d.p.x,Q.p.z-d.p.z);
+        if(spd2<20){
+          d.jink+=dt*2.1;
+          var sev=(1-spd2/20)*ss*0.45;
+          sdir.x+=Math.cos(d.jink)*sev; sdir.z+=Math.sin(d.jink)*sev;
+        }
+        d.v.lerp(sdir,1-Math.exp(-dt*1.9));
+      }
+      else if(d.state==='descend'){
+        var want=_tmpB.set((d.pad.x-d.p.x)*1.4,-2.4,(d.pad.z-d.p.z)*1.4);
+        d.v.lerp(want,1-Math.exp(-dt*3.2));
+        if(d.p.y<=d.pad.y+0.35){ this.land(d); continue }
+      }
+      else {
+        d.fade-=dt*2.4; d.v.multiplyScalar(Math.exp(-dt*5));
+        d.obj.scale.setScalar(Math.max(0.01,d.baseScale*d.fade));
+        d.p.addScaledVector(d.v,dt); d.obj.position.copy(d.p);
+        if(d.fade<=0){ this.group.remove(d.obj); this.list.splice(i,1) }
+        continue;
+      }
+
+      d.p.addScaledVector(d.v,dt);
+      d.obj.position.copy(d.p);
+
+      if(!Q.crashed && Q.armed && sweptHit(prevPlayer,Q.p,d.pPrev,d.p,tgtR+RADIUS)){
+        this.hit(d); continue;
+      }
+
+      // hold a floor on apparent size so a distant target is still a speck that moves
+      if(this.adv){
+        var dist=d.p.distanceTo(activeCam.position);
+        d.baseScale=clamp(dist*perPx*2.6/0.62,1,46);
+      }
+      d.obj.scale.setScalar(d.baseScale);
+
+      var hs=Math.hypot(d.v.x,d.v.z);
+      if(hs>0.4){
+        d.obj.rotation.y=Math.atan2(d.v.x,d.v.z);
+        d.obj.rotation.x=clamp(-hs*0.02,-0.4,0.4);
+      }
+    }
+  },
+
+  hit:function(d){
+    d.state='caught'; d.v.set(0,0,0);
+    var bcn=d.obj.userData.beacon;
+    bcn.material.color.setHex(0x54E08A); bcn.visible=true;
+    if(d.pad){ d.pad.busy=null; d.pad.ring.material.color.setHex(0x8B7BF0) }
+    this.caught++;
+    this.hits.push({p:d.p.clone(),t:0});
+    this.flash=1;
+    if(this.adv) LB.submit('adv',this.caught,
+      {speed:+CFG.tgtSpeed.toFixed(1),search:CFG.searchTime,flow:CFG.waveMode,brackets:!!CFG.brackets});
+    else LB.submit('catch',this.caught);
+    if(!this.adv && this.caught%5===0) this.wave++;
+    this.gap();
+    if(AUDIO.on) AUDIO.hit();
+  },
+  land:function(d){
+    d.state='gone';
+    if(d.pad){ d.pad.busy=null; d.pad.ring.material.color.setHex(0xFF4D5E) }
+    this.landed++;
+    this.gap();
+    if(AUDIO.on) AUDIO.thump();
+    if(this.landed>=this.LOSE){ this.over=true }
+  },
+  // one-by-one: leave a beat after a target resolves instead of launching instantly
+  gap:function(){
+    if(this.adv && CFG.waveMode==='seq') this.spawnT=Math.max(this.spawnT,2.5);
+  }
+};
+var _tmpA=new THREE.Vector3(), _tmpB=new THREE.Vector3(), _tmpC=new THREE.Vector3();
+
+/* target brackets drawn over the render, the way a hunter HUD would */
+function drawTargets(){
+  var cv=$('#tgtCv'); if(!cv) return;
+  var g=cv.getContext('2d'), W=cv.width, H=cv.height;
+  g.clearRect(0,0,W,H);
+  if(!CATCH.on) return;
+  var dpr=Math.min(devicePixelRatio||1,2);
+  activeCam.updateMatrixWorld();
+  g.font=(11*dpr)+'px "JetBrains Mono",monospace';
+  g.textAlign='center';
+
+  // --- hit confirmation: expanding ring at the contact, and a call-out at centre ---
+  for(var hI=0;hI<CATCH.hits.length;hI++){
+    var hv=CATCH.hits[hI], ht=hv.t/0.9;
+    var hl=_tmpC.copy(hv.p).applyMatrix4(activeCam.matrixWorldInverse);
+    if(hl.z>=0) continue;
+    var hn=_tmpA.copy(hv.p).project(activeCam);
+    var HX=(hn.x*0.5+0.5)*W, HY=(1-(hn.y*0.5+0.5))*H;
+    g.globalAlpha=Math.max(0,1-ht);
+    g.strokeStyle='#54E08A'; g.lineWidth=3*dpr*(1-ht*0.6);
+    g.beginPath(); g.arc(HX,HY,(10+ht*120)*dpr,0,TAU); g.stroke();
+    g.beginPath(); g.arc(HX,HY,(4+ht*46)*dpr,0,TAU); g.stroke();
+    g.globalAlpha=1;
+  }
+  if(CATCH.flash>0){
+    var fa=Math.min(1,CATCH.flash*1.5);
+    g.save();
+    g.globalAlpha=fa;
+    g.font=(700)+' '+(46*dpr)+'px "Chakra Petch",system-ui,sans-serif';
+    g.fillStyle='#54E08A';
+    g.shadowColor='rgba(0,0,0,.9)'; g.shadowBlur=10*dpr;
+    g.fillText('HIT', W/2, H*0.30+(1-fa)*14*dpr);
+    g.font=(11*dpr)+'px "JetBrains Mono",monospace';
+    g.fillStyle='rgba(255,255,255,.85)';
+    g.fillText('DIRECT CONTACT', W/2, H*0.30+22*dpr);
+    g.restore();
+    g.font=(11*dpr)+'px "JetBrains Mono",monospace';
+  }
+
+  if(!CFG.brackets) return;   // brackets off: nothing but your eyes and the sky
+
+  for(var i=0;i<CATCH.list.length;i++){
+    var d=CATCH.list[i];
+    if(d.state==='gone') continue;
+    var col = d.state==='caught' ? '#54E08A'
+            : d.state==='descend' ? '#FF4D5E'
+            : d.state==='search'  ? '#3FD8E8'
+            : '#FF9E2C';
+    var local=_tmpC.copy(d.p).applyMatrix4(activeCam.matrixWorldInverse);
+    var dist=d.p.distanceTo(Q.p);
+    var ndc=_tmpA.copy(d.p).project(activeCam);
+    var onScreen = local.z<0 && Math.abs(ndc.x)<=1 && Math.abs(ndc.y)<=1;
+    if(onScreen){
+      var X=(ndc.x*0.5+0.5)*W, Y=(1-(ndc.y*0.5+0.5))*H;
+      var s=clamp(700/Math.max(4,dist),9,64)*dpr;
+      g.strokeStyle=col; g.lineWidth=1.8*dpr;
+      g.shadowColor='rgba(0,0,0,.85)'; g.shadowBlur=3*dpr;
+      var c2=s*0.34;
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(q){
+        g.beginPath();
+        g.moveTo(X+q[0]*s, Y+q[1]*s - q[1]*c2);
+        g.lineTo(X+q[0]*s, Y+q[1]*s);
+        g.lineTo(X+q[0]*s - q[0]*c2, Y+q[1]*s);
+        g.stroke();
+      });
+      g.fillStyle=col;
+      g.fillText(Math.round(dist)+'m', X, Y+s+14*dpr);
+      if(d.state==='descend') g.fillText('LANDING', X, Y-s-6*dpr);
+      else if(d.state==='search') g.fillText('SEARCHING '+Math.max(0,Math.ceil(d.searchT))+'s', X, Y-s-6*dpr);
+    } else {
+      // edge arrow so you can turn onto a contact you cannot see
+      var ax=ndc.x, ay=ndc.y;
+      if(local.z>0){ ax=-ax; ay=-ay }
+      var m=Math.max(Math.abs(ax),Math.abs(ay))||1;
+      ax/=m; ay/=m;
+      var pad=34*dpr;
+      var X2=clamp((ax*0.5+0.5)*W,pad,W-pad), Y2=clamp((1-(ay*0.5+0.5))*H,pad,H-pad);
+      var ang=Math.atan2(-ay,ax);
+      g.save(); g.translate(X2,Y2); g.rotate(ang);
+      g.fillStyle=col; g.globalAlpha=.85;
+      g.beginPath(); g.moveTo(11*dpr,0); g.lineTo(-7*dpr,6*dpr); g.lineTo(-7*dpr,-6*dpr); g.closePath(); g.fill();
+      g.restore();
+      g.globalAlpha=1; g.fillStyle=col;
+      g.fillText(Math.round(dist)+'m',X2,Y2+22*dpr);
+    }
+  }
+}
+
+function onResize(){
+  var host=$('#view'); if(!renderer)return;
+  var w=host.clientWidth,h=host.clientHeight;
+  renderer.setSize(w,h);
+  [camFPV,camChase,camLOS].forEach(function(c){ if(c){c.aspect=w/h;c.updateProjectionMatrix()} });
+  var dpr=Math.min(devicePixelRatio||1,2);
+  var hc=$('#horizonCv');
+  hc.width=hc.clientWidth*dpr; hc.height=hc.clientHeight*dpr;
+  var tc=$('#tgtCv');
+  if(tc){ tc.width=w*dpr; tc.height=h*dpr }
+}
+addEventListener('resize',onResize);
+
+/* =======================================================================
+   5. DRILLS
+   ======================================================================= */
+var DRILL={
+  id:'free',
+  st:{},
+  spawn:function(){
+    var p;
+    if(this.id==='hover') p={x:HOVER_BOX.x,z:HOVER_BOX.z+2};
+    else if(this.id==='orbit') p={x:ORBIT_POLE.x+6,z:ORBIT_POLE.z};
+    else if(this.id==='catch'||this.id==='adv'){ var s=vWorld(0,-24); p={x:s.x,z:s.z} }
+    else if(this.id==='gates') p={x:ARENA.x,z:ARENA.z};
+    else p={x:ARENA.x,z:ARENA.z+6};                      // free flight launches from the field
+    p.y=terrainY(p.x,p.z)+0.09;
+    return p;
+  },
+  spawnYaw:function(){
+    if(this.id==='orbit') return -Math.PI/2;
+    if(this.id==='catch'||this.id==='adv') return Math.PI;
+    return 0;
+  },
+  set:function(id){
+    LB.flush();
+    this.id=id;
+    hoverBoxObj.visible=(id==='hover');
+    orbitRingObj.visible=(id==='orbit');
+    if(padGroup) padGroup.visible=(id==='catch'||id==='adv');
+    CATCH.adv=(id==='adv');
+    CATCH.on=(id==='catch'||id==='adv');
+    setSky(CATCH.adv?'day':'dusk');
+    var ab=$('#advBar'); if(ab) ab.hidden=!CATCH.adv;
+    document.getElementById('app').classList.toggle('advmode',CATCH.adv);
+    if(CATCH.on) CATCH.reset(); else CATCH.despawnAll();
+    gateHighlights.forEach(function(m,i){
+      m.children.forEach(function(c){ if(c.material&&c.material.emissive) c.material.emissiveIntensity=(id==='gates')?0.75:0.42 });
+    });
+    fullReset();
+    if(id==='gates') this.highlight();
+    // park the line-of-sight camera where a pilot would actually stand
+    // stand the line-of-sight camera where a spotter would: clear of the lane,
+    // far enough back that the whole village fits rather than one hedge
+    if(camLOS){
+      var c;
+      if(id==='catch'||id==='adv'){ var v=vWorld(LOS_STAND.x,LOS_STAND.z); c={x:v.x,z:v.z,up:6} }
+      else { var sp=this.spawn(); c={x:sp.x+2,z:sp.z+13,up:1.7} }
+      camLOS.position.set(c.x,terrainY(c.x,c.z)+c.up,c.z);
+    }
+  },
+  reset:function(){
+    this.st={inBox:0,best:0,gate:0,laps:0,lapT:0,bestLap:0,orbits:0,ang:null,accum:0,radErr:0,radN:0,crashes:this.st.crashes||0};
+    WORLD.gates.forEach(function(g){g.prev=0});
+  },
+  onCrash:function(){ this.st.crashes=(this.st.crashes||0)+1; this.st.inBox=0; },
+  track:function(dt,prevY){
+    var s=this.st;
+    if(this.id==='hover'){
+      var b=HOVER_BOX,h=b.s/2;
+      var inside=Math.abs(Q.p.x-b.x)<h && Math.abs(Q.p.y-b.y)<h && Math.abs(Q.p.z-b.z)<h;
+      if(inside&&Q.armed){
+        s.inBox+=dt;
+        if(s.inBox>s.best){ s.best=s.inBox; LB.submit('hover',s.best) }
+      } else if(!inside){ s.inBox=0 }
+      hoverBoxObj.material.color.setHex(inside?0x54E08A:0x3FD8E8);
+      hoverBoxObj.material.opacity=inside?0.5:0.3;
+    }
+    else if(this.id==='gates'){
+      if(Q.armed) s.lapT+=dt;
+      var g=WORLD.gates[s.gate];
+      var dx=Q.p.x-g.x, dz=Q.p.z-g.z, c=Math.cos(-g.yaw), sn=Math.sin(-g.yaw);
+      var lx=dx*c-dz*sn, lz=dx*sn+dz*c, ly=Q.p.y-g.y;
+      var side=lz>0?1:-1;
+      if(g.prev!==0 && side!==g.prev && Math.abs(lx)<g.w/2 && Math.abs(ly)<g.h/2){
+        s.gate=(s.gate+1)%WORLD.gates.length;
+        if(s.gate===0){
+          s.laps++;
+          if(!s.bestLap||s.lapT<s.bestLap){ s.bestLap=s.lapT; LB.submit('gates',s.bestLap) }
+          s.lapT=0;
+        }
+        this.highlight();
+        if(AUDIO.on)AUDIO.blip();
+      }
+      g.prev=side;
+    }
+    else if(this.id==='orbit'){
+      var a=Math.atan2(Q.p.z-ORBIT_POLE.z,Q.p.x-ORBIT_POLE.x);
+      var r=Math.hypot(Q.p.x-ORBIT_POLE.x,Q.p.z-ORBIT_POLE.z);
+      if(Q.armed && Q.p.y>0.8 && r>2 && r<12){
+        if(s.ang!==null){
+          var d=a-s.ang; while(d>Math.PI)d-=TAU; while(d<-Math.PI)d+=TAU;
+          s.accum+=d;
+          if(Math.abs(s.accum)>=TAU){
+            s.orbits++; s.accum-=Math.sign(s.accum)*TAU;
+            LB.submit('orbit',s.orbits,{err:s.radN?+(s.radErr/s.radN).toFixed(2):null});
+            if(AUDIO.on)AUDIO.blip();
+          }
+        }
+        s.ang=a;
+        s.radErr+=Math.abs(r-6); s.radN++;
+      } else { s.ang=null }
+    }
+  },
+  highlight:function(){
+    var g=this.st.gate;
+    gateHighlights.forEach(function(m,i){
+      var col=(i===g)?0x3FD8E8:0xFF9E2C;
+      m.children.forEach(function(c){ if(c.material&&c.material.emissive&&c.material.color.getHex()!==0x1a1f28){
+        c.material.color.setHex(col); c.material.emissive.setHex(col);
+      }});
+    });
+  },
+  render:function(){
+    var s=this.st,h='';
+    function cell(l,v,col){return '<div class="dstat"><span>'+l+'</span><b'+(col?' style="color:'+col+'"':'')+'>'+v+'</b></div>'}
+    if(this.id==='hover'){
+      h=cell('In box',s.inBox.toFixed(1)+'s',s.inBox>0?'var(--green)':'var(--dim)')
+       +cell('Best hold',s.best.toFixed(1)+'s','var(--amber)')
+       +cell('Crashes',s.crashes||0);
+    } else if(this.id==='gates'){
+      h=cell('Gate',(s.gate+1)+' / '+WORLD.gates.length,'var(--cyan)')
+       +cell('Lap',fmtT(s.lapT))
+       +cell('Best lap',s.bestLap?fmtT(s.bestLap):'—','var(--amber)')
+       +cell('Laps',s.laps)
+       +cell('Crashes',s.crashes||0);
+    } else if(this.id==='orbit'){
+      var err=s.radN?(s.radErr/s.radN):0;
+      h=cell('Orbits',s.orbits,'var(--violet)')
+       +cell('Radius error','±'+err.toFixed(2)+'m',err<1?'var(--green)':'var(--amber)')
+       +cell('Crashes',s.crashes||0);
+    } else if(this.id==='catch'||this.id==='adv'){
+      var near=null,inbound=0,nearState='';
+      for(var i=0;i<CATCH.list.length;i++){
+        var d=CATCH.list[i];
+        if(d.state!=='cruise'&&d.state!=='search'&&d.state!=='descend')continue;
+        inbound++;
+        var dd=d.p.distanceTo(Q.p);
+        if(near===null||dd<near){ near=dd; nearState=d.state }
+      }
+      if(this.id==='adv'){
+        var nc=nearState==='descend'?'var(--red)':(nearState==='search'?'var(--cyan)':'var(--amber)');
+        var phase=nearState==='descend'?'LANDING':(nearState==='search'?'SEARCHING':(nearState?'INBOUND':'—'));
+        h=cell('Hits',CATCH.caught,'var(--green)')
+         +cell('Escaped',CATCH.landed+' / '+CATCH.LOSE,CATCH.landed?'var(--red)':'var(--dim)')
+         +cell('Contacts',inbound,'var(--amber)')
+         +cell('Nearest',near===null?'—':Math.round(near)+'m',nc)
+         +cell('Phase',phase,nc);
+      } else {
+        h=cell('Caught',CATCH.caught,'var(--green)')
+         +cell('Landed',CATCH.landed+' / '+CATCH.LOSE,CATCH.landed?'var(--red)':'var(--dim)')
+         +cell('Wave',CATCH.wave,'var(--amber)')
+         +cell('Nearest',near===null?'—':Math.round(near)+'m','var(--cyan)');
+      }
+      if(CATCH.over) h+=cell('Round','OVER — R','var(--red)');
+    } else {
+      h=cell('Air time',fmtT(Q.flightTime))
+       +cell('Distance',Math.round(Q.dist)+'m')
+       +cell('Crashes',s.crashes||0);
+    }
+    $('#drillCard').innerHTML=h;
+  }
+};
+function fmtT(t){var m=Math.floor(t/60),s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(1)}
+function fmtMS(t){var m=Math.floor(t/60),s=Math.floor(t-m*60);return (m<10?'0':'')+m+':'+(s<10?'0':'')+s}
+
+/* =======================================================================
+   6. AUDIO — motor tone tracks RPM, a real cue pilots fly by
+   ======================================================================= */
+/* Four independent motor voices, each a tri-blade prop spectrum whose pitch
+   follows that motor's own RPM out of the X mixer. The beating between four
+   slightly mismatched motors, and the warble as the mixer splits them apart
+   on a stick input, is what makes a quad sound like a quad rather than a
+   siren. Layered over that: airframe rush that tracks airspeed, a low body
+   rumble, and a filter that opens under load. */
+var _adop=new THREE.Vector3();
+var AUDIO={
+  on:false, ctx:null, ready:false, motors:[], noiseBuf:null,
+  MIXER:[[-1, 1, 1],[-1,-1,-1],[ 1, 1,-1],[ 1,-1, 1]],   // [roll, pitch, yaw] per motor, quad-X
+  PAN:[0.34,0.30,-0.34,-0.30],
+
+  softClip:function(k){
+    var n=1024, c=new Float32Array(n);
+    for(var i=0;i<n;i++){ var x=i*2/n-1; c[i]=(1+k)*x/(1+k*Math.abs(x)) }
+    return c;
+  },
+  propWave:function(c){
+    // harmonic 3 and its multiples dominate: three blades passing per revolution
+    var amps=[0,0.40,0.22,0.90,0.17,0.11,0.46,0.09,0.07,0.24,0.05,0.05,0.13,0.04,0.08];
+    var n=amps.length, real=new Float32Array(n), imag=new Float32Array(n);
+    for(var i=1;i<n;i++) imag[i]=amps[i];
+    return c.createPeriodicWave(real,imag,{disableNormalization:false});
+  },
+
+  init:function(){
+    if(this.ctx)return;
+    var C=window.AudioContext||window.webkitAudioContext; if(!C)return;
+    var c=this.ctx=new C();
+
+    this.master=c.createGain(); this.master.gain.value=0;
+    var comp=c.createDynamicsCompressor();
+    comp.threshold.value=-16; comp.knee.value=20; comp.ratio.value=4;
+    comp.attack.value=0.004; comp.release.value=0.18;
+    this.master.connect(comp); comp.connect(c.destination);
+
+    // motor bus: soft saturation, then a lowpass that opens as the motors load up
+    this.mBus=c.createGain(); this.mBus.gain.value=0.85;
+    var shaper=c.createWaveShaper();
+    shaper.curve=this.softClip(2.4); shaper.oversample='2x';
+    this.mLP=c.createBiquadFilter(); this.mLP.type='lowpass'; this.mLP.frequency.value=1600; this.mLP.Q.value=0.8;
+    this.mHP=c.createBiquadFilter(); this.mHP.type='highpass'; this.mHP.frequency.value=45;
+    this.mBus.connect(shaper); shaper.connect(this.mLP); this.mLP.connect(this.mHP); this.mHP.connect(this.master);
+
+    var wave=this.propWave(c);
+    this.motors=[];
+    for(var m=0;m<4;m++){
+      var o=c.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=90;
+      var g=c.createGain(); g.gain.value=0;
+      o.connect(g);
+      if(c.createStereoPanner){
+        var p=c.createStereoPanner(); p.pan.value=this.PAN[m];
+        g.connect(p); p.connect(this.mBus);
+      } else g.connect(this.mBus);
+      o.start();
+      // no two motors or props are identical; the mismatch is what beats
+      this.motors.push({o:o,g:g,detune:[-9,5,-4,10][m]});
+    }
+
+    var len=Math.floor(c.sampleRate*2), buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
+    this.noiseBuf=buf;
+
+    this.nz=c.createBufferSource(); this.nz.buffer=buf; this.nz.loop=true;
+    this.nzBP=c.createBiquadFilter(); this.nzBP.type='bandpass'; this.nzBP.frequency.value=900; this.nzBP.Q.value=0.5;
+    this.nzG=c.createGain(); this.nzG.gain.value=0;
+    this.nz.connect(this.nzBP); this.nzBP.connect(this.nzG); this.nzG.connect(this.master);
+    this.nz.start();
+
+    this.rum=c.createBufferSource(); this.rum.buffer=buf; this.rum.loop=true;
+    this.rumLP=c.createBiquadFilter(); this.rumLP.type='lowpass'; this.rumLP.frequency.value=130;
+    this.rumG=c.createGain(); this.rumG.gain.value=0;
+    this.rum.connect(this.rumLP); this.rumLP.connect(this.rumG); this.rumG.connect(this.master);
+    this.rum.start();
+
+    this.ready=true;
+  },
+
+  toggle:function(){
+    this.init(); if(!this.ctx)return false;
+    if(this.ctx.state==='suspended')this.ctx.resume();
+    this.on=!this.on;
+    this.master.gain.setTargetAtTime(this.on?1:0,this.ctx.currentTime,0.06);
+    return this.on;
+  },
+
+  update:function(){
+    if(!this.on||!this.ctx||!this.ready)return;
+    var c=this.ctx, t=c.currentTime;
+    var vol=CFG.volume/100, wv=(CFG.windVol/100)*vol;
+
+    // from the outside, the quad is a point source that moves: range and Doppler
+    var dop=1, range=1;
+    if(viewMode!==0 && activeCam){
+      _adop.subVectors(Q.p,activeCam.position);
+      var dist=Math.max(1,_adop.length());
+      var vr=(Q.v.x*_adop.x+Q.v.y*_adop.y+Q.v.z*_adop.z)/dist;
+      dop=clamp(343/(343+vr),0.72,1.38);
+      range=clamp(14/dist,0.10,1);
+    }
+
+    var th=Q.motor, armed=Q.armed&&!Q.crashed;
+    var r=armed?RC.out.roll*0.17:0, p=armed?RC.out.pitch*0.17:0, y=armed?RC.out.yaw*0.14:0;
+    var vRatio=clamp(Q.vbat/(4.2*CFG.cells),0.6,1.05);
+
+    for(var i=0;i<4;i++){
+      var mx=this.MIXER[i];
+      var cmd=clamp(th + mx[0]*r + mx[1]*p + mx[2]*y, 0, 1.18);
+      var rpm=(armed?4400:0) + cmd*23000*vRatio;
+      var f=Math.max(16,(rpm/60)*dop);
+      var M=this.motors[i];
+      M.o.frequency.setTargetAtTime(f,t,0.018);
+      M.o.detune.setTargetAtTime(M.detune,t,0.2);
+      M.g.gain.setTargetAtTime((armed?(0.030+cmd*0.105):0)*vol*range,t,0.03);
+    }
+    this.mLP.frequency.setTargetAtTime((850+th*4300)*dop,t,0.05);
+
+    var spd=Q.v.length(), wind=Math.min(1,spd/34);
+    var washy=clamp((-Q.v.y-2)/8,0,1)*Math.min(1,th*1.6);
+    this.nzBP.frequency.setTargetAtTime(480+wind*2200,t,0.08);
+    this.nzBP.Q.setTargetAtTime(0.5+washy*1.6,t,0.1);
+    this.nzG.gain.setTargetAtTime((wind*wind*0.34+washy*0.20)*wv*range,t,0.06);
+    this.rumG.gain.setTargetAtTime((wind*0.20+washy*0.26)*wv*range,t,0.09);
+    this.rumLP.frequency.setTargetAtTime(85+wind*150,t,0.1);
+  },
+
+  blip:function(){ this._ping(1250,0.07,'triangle',0.18) },
+  thump:function(){ this._ping(120,0.24,'sine',0.30) },
+  hit:function(){
+    this._ping(1900,0.05,'square',0.16);
+    var s=this; setTimeout(function(){ s._ping(640,0.18,'triangle',0.24) },45);
+  },
+  crash:function(){
+    if(!this.on||!this.ctx)return;
+    var c=this.ctx,t=c.currentTime;
+    var b=c.createBufferSource(); b.buffer=this.noiseBuf;
+    var f=c.createBiquadFilter(); f.type='lowpass';
+    f.frequency.setValueAtTime(3200,t); f.frequency.exponentialRampToValueAtTime(150,t+0.38);
+    var g=c.createGain();
+    g.gain.setValueAtTime(0.55*(CFG.volume/100),t); g.gain.exponentialRampToValueAtTime(0.001,t+0.42);
+    b.connect(f); f.connect(g); g.connect(this.master);
+    b.start(t); b.stop(t+0.45);
+    var o=c.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(170,t); o.frequency.exponentialRampToValueAtTime(36,t+0.3);
+    var og=c.createGain();
+    og.gain.setValueAtTime(0.6*(CFG.volume/100),t); og.gain.exponentialRampToValueAtTime(0.001,t+0.34);
+    o.connect(og); og.connect(this.master); o.start(t); o.stop(t+0.35);
+  },
+  _ping:function(f,d,type,amp){
+    if(!this.on||!this.ctx)return;
+    var c=this.ctx,o=c.createOscillator(),g=c.createGain();
+    o.frequency.value=f; o.type=type||'triangle';
+    g.gain.setValueAtTime((amp||0.2)*(CFG.volume/100),c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);
+    o.connect(g); g.connect(this.master); o.start(); o.stop(c.currentTime+d);
+  }
+};
+
+/* =======================================================================
+   7. UI
+   ======================================================================= */
+function buildSliders(){
+  Object.keys(SLIDERS).forEach(function(gid){
+    var host=document.getElementById(gid); if(!host)return;
+    host.innerHTML='';
+    host.style.display='flex'; host.style.flexDirection='column'; host.style.gap='11px';
+    SLIDERS[gid].forEach(function(s){
+      var w=document.createElement('div'); w.className='sl';
+      w.innerHTML='<div class="sl-top"><span class="sl-lbl">'+s.l+'</span><span class="sl-val" id="v-'+s.k+'"></span></div>';
+      var inp=document.createElement('input');
+      inp.type='range'; inp.min=s.min; inp.max=s.max; inp.step=s.step; inp.value=CFG[s.k];
+      inp.id='s-'+s.k; inp.setAttribute('aria-label',s.l);
+      inp.addEventListener('input',function(){
+        CFG[s.k]=parseFloat(inp.value);
+        paintSlider(s);
+        if(s.k==='fov'&&camFPV){camFPV.fov=CFG.fov;camFPV.updateProjectionMatrix()}
+        save();
+      });
+      w.appendChild(inp); host.appendChild(w);
+      paintSlider(s);
+    });
+  });
+}
+function paintSlider(s){
+  var el=document.getElementById('v-'+s.k); if(!el)return;
+  var v=CFG[s.k];
+  var txt=(s.step<1)?v.toFixed(s.step<0.05?2:2):Math.round(v);
+  el.textContent=txt+s.u;
+}
+function refreshSliders(){
+  Object.keys(SLIDERS).forEach(function(g){
+    SLIDERS[g].forEach(function(s){
+      var i=document.getElementById('s-'+s.k); if(i)i.value=CFG[s.k];
+      paintSlider(s);
+    });
+  });
+}
+
+function buildChanList(){
+  var h='';
+  CHANS.forEach(function(c){
+    h+='<div class="chan"><span class="chan-n">'+CHAN_LABEL[c]+'</span>'
+      +'<div class="chan-bar"><u></u><i id="cb-'+c+'"></i></div>'
+      +'<button class="chan-inv'+(RC.map[c].inv?' on':'')+'" data-c="'+c+'">INV</button></div>';
+  });
+  $('#chanList').innerHTML=h;
+  $('#chanList').querySelectorAll('.chan-inv').forEach(function(b){
+    b.addEventListener('click',function(){
+      var c=b.dataset.c; RC.map[c].inv=!RC.map[c].inv;
+      b.classList.toggle('on',RC.map[c].inv); save();
+    });
+  });
+}
+function paintChans(){
+  CHANS.forEach(function(c){
+    var el=document.getElementById('cb-'+c); if(!el)return;
+    var v=RC.raw[c];
+    if(c==='thr'||c==='aux'){ el.style.left='0%'; el.style.width=(clamp(v,0,1)*100)+'%' }
+    else { var t=clamp(v,-1,1); if(t>=0){el.style.left='50%';el.style.width=(t*50)+'%'} else {el.style.left=(50+t*50)+'%';el.style.width=(-t*50)+'%'} }
+  });
+}
+
+function updateRcChip(){
+  var dot=$('#rcDot'),txt=$('#rcTxt'),sd=$('#setupDot'),sm=$('#setupMsg');
+  if(RC.blocked){
+    dot.className='dot err'; txt.textContent='Radio blocked';
+    if(sd){sd.className='dot err'; sm.textContent='This page cannot reach USB gamepads — open the downloaded file instead.'}
+    return;
+  }
+  if(RC.connected){
+    dot.className='dot on'; txt.textContent=(RC.pad&&RC.pad.id?RC.pad.id.slice(0,22):'Radio')||'Radio';
+    if(sd){sd.className='dot on'; sm.textContent='Detected: '+(RC.pad.id||'gamepad')+' — '+RC.pad.axes.length+' axes'}
+  } else {
+    dot.className='dot warn'; txt.textContent='Keyboard';
+    if(sd){sd.className='dot warn'; sm.textContent='No transmitter — keyboard is live. Plug a radio in and move a stick to switch over.'}
+  }
+}
+
+/* ---- homepage ---- */
+function renderHome(){
+  var host=$('#gameCards'); if(!host) return;
+  var h='';
+  GAMES.forEach(function(g){
+    var mine=LB.mine(g.id), rank=LB.rank(g.id), rows=LB.rows(g.id).slice(0,3);
+    h+='<article class="gcard">'
+      +'<div class="gc-top"><h2>'+g.name+'</h2><span class="gc-metric">'+g.metric+'</span></div>'
+      +'<p class="gc-blurb">'+g.blurb+'</p>'
+      +'<div class="gc-best'+(mine?'':' empty')+'">'
+        +'<b>'+(mine?g.fmt(mine.v):'—')+'</b><span>your best</span>'
+        +(rank?'<span class="gc-rank">rank '+rank+' of '+LB.rows(g.id).length+'</span>':'')
+      +'</div>';
+    if(rows.length){
+      h+='<ol class="gc-board">';
+      rows.forEach(function(r,i){
+        var me=r.id===PROFILE.id;
+        h+='<li'+(me?' class="me"':'')+'><span class="lb-r">'+(i+1)+'</span>'
+          +'<span class="lb-n">'+esc(r.name||'Unnamed')+'<span style="color:var(--dimmer)">#'+tagOf(r.id)+'</span></span>'
+          +'<span class="lb-v">'+g.fmt(r.v)+'</span></li>';
+      });
+      h+='</ol>';
+    } else {
+      h+='<div class="gc-board"><p class="gc-empty">No runs yet — set the mark.</p></div>';
+    }
+    h+='<button class="btn pri gc-play" data-g="'+g.id+'">Fly '+g.name.toLowerCase()+'</button>'
+      +'</article>';
+  });
+  host.innerHTML=h;
+  host.querySelectorAll('.gc-play').forEach(function(b){
+    b.addEventListener('click',function(){ startGame(b.dataset.g) });
+  });
+  renderHomeRadio();
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}) }
+
+function renderHomeRadio(){
+  var el=$('#homeRadio'); if(!el) return;
+  var cls='',msg='',btn='Radio setup';
+  if(RC.blocked){
+    cls='err'; msg='<b>Transmitter unavailable on this page.</b> The hosted page is sandboxed and cannot reach USB gamepads — open the downloaded file in Chrome to fly with your radio. Keyboard works here.';
+    btn='Details';
+  } else if(RC.connected){
+    cls='ok'; msg='<b>Radio connected.</b> '+esc((RC.pad&&RC.pad.id)||'gamepad')+' — recalibrate any time.';
+    btn='Calibrate';
+  } else {
+    cls='warn'; msg='<b>No transmitter — keyboard is live.</b> Plug a radio in, choose USB Joystick (HID) and move a stick; it takes over on its own. Fine for a look around meanwhile, but no substitute for stick time.';
+  }
+  el.className='home-radio '+cls;
+  el.innerHTML='<span class="dot '+(cls==='ok'?'on':cls==='err'?'err':'warn')+'"></span><span>'+msg+'</span>'
+    +'<button class="btn" id="homeRadioBtn">'+btn+'</button>';
+  $('#homeRadioBtn').addEventListener('click',function(){
+    $('#setup').classList.remove('hidden'); calCancel();
+  });
+}
+function showHome(){
+  LB.flush();
+  Q.armed=false;
+  clearKeys();                 // a key held when the screen opened must not stick
+  $('#home').classList.remove('hidden');
+  $('#app').classList.add('athome');
+  $('#pilotName').value=PROFILE.name||'';
+  $('#pilotTag').textContent='#'+tagOf(PROFILE.id);
+  renderHome();
+}
+function startGame(id){
+  // never carry focus out of a text field into a flight — the keys would be swallowed
+  try{ if(document.activeElement&&document.activeElement.blur) document.activeElement.blur() }catch(e){}
+  clearKeys();
+  $('#home').classList.add('hidden');
+  $('#app').classList.remove('athome');
+  $('#setup').classList.add('hidden');
+  DRILL.set(id);
+  var seg=$('#drillSeg');
+  seg.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on',x.dataset.d===id) });
+}
+
+/* ---- calibration wizard ---- */
+var CAL={active:false,step:0,order:['thr','roll','pitch','yaw','aux'],base:null,range:null,assigned:{}};
+var CAL_TEXT={
+  thr:['Sweep the THROTTLE stick','Move it from all the way down to all the way up, a few times.'],
+  roll:['Sweep ROLL','Move the aileron stick fully left and right.'],
+  pitch:['Sweep PITCH','Move the elevator stick fully forward and back.'],
+  yaw:['Sweep YAW','Move the rudder stick fully left and right.'],
+  aux:['Flip your ARM switch','Toggle it a few times. Skip this if you would rather arm with the Enter key.']
+};
+function calStart(){
+  if(RC.blocked) return;
+  if(!RC.connected){ pollPad(); }
+  if(RC.blocked) return;
+  if(!RC.connected){ $('#setupMsg').textContent='No radio detected yet — plug it in, set USB Joystick mode, and move a stick.'; return; }
+  CAL.active=true; CAL.step=-1; CAL.assigned={};
+  $('#introWrap').style.display='none'; $('#calWrap').classList.add('on');
+  $('#setup').classList.remove('hidden');
+  calAdvance();
+}
+function calAdvance(){
+  // commit previous channel
+  if(CAL.step>=0 && CAL.range){
+    var ch=CAL.order[CAL.step], best=-1, bi=-1;
+    for(var i=0;i<CAL.range.length;i++){
+      var sp=CAL.range[i].max-CAL.range[i].min;
+      if(sp>best && sp>0.25 && !usedAxis(i)){ best=sp; bi=i }
+    }
+    if(bi>=0){
+      RC.map[ch]={axis:bi,min:CAL.range[bi].min,max:CAL.range[bi].max,inv:false};
+      CAL.assigned[ch]=bi;
+      // sensible default direction: throttle should read low at rest
+      if(ch==='thr'){
+        var rest=RC.pad.axes[bi];
+        var t=(rest-CAL.range[bi].min)/((CAL.range[bi].max-CAL.range[bi].min)||1);
+        if(t>0.6) RC.map[ch].inv=true;
+      }
+    }
+  }
+  CAL.step++;
+  if(CAL.step>=CAL.order.length){ calFinish(); return; }
+  var c=CAL.order[CAL.step];
+  $('#calAsk').textContent=CAL_TEXT[c][0];
+  $('#calSub').textContent=CAL_TEXT[c][1];
+  $('#calNext').textContent=(CAL.step===CAL.order.length-1)?'Finish':'Continue';
+  // reset capture ranges
+  pollPad();
+  CAL.range=[];
+  if(RC.pad) for(var j=0;j<RC.pad.axes.length;j++) CAL.range.push({min:RC.pad.axes[j],max:RC.pad.axes[j]});
+  buildAxList();
+}
+function usedAxis(i){ for(var k in CAL.assigned) if(CAL.assigned[k]===i) return true; return false }
+function calFinish(){
+  CAL.active=false;
+  $('#calWrap').classList.remove('on'); $('#introWrap').style.display='';
+  $('#setup').classList.add('hidden');
+  RC.keyboard=false;
+  buildChanList(); save(); updateRcChip();
+}
+function calCancel(){
+  CAL.active=false;
+  $('#calWrap').classList.remove('on'); $('#introWrap').style.display='';
+}
+function buildAxList(){
+  if(!RC.pad)return;
+  var h='';
+  for(var i=0;i<RC.pad.axes.length;i++) h+='<div class="axrow"><span>AXIS '+i+'</span><div class="axbar" id="ax-'+i+'"><i></i></div></div>';
+  $('#axList').innerHTML=h;
+}
+function calTick(){
+  if(!CAL.active||!RC.pad)return;
+  var hotIdx=-1,hotSpan=0;
+  for(var i=0;i<RC.pad.axes.length;i++){
+    var v=RC.pad.axes[i], r=CAL.range[i];
+    if(!r){CAL.range[i]=r={min:v,max:v}}
+    if(v<r.min)r.min=v; if(v>r.max)r.max=v;
+    var sp=r.max-r.min;
+    if(sp>hotSpan && !usedAxis(i)){hotSpan=sp;hotIdx=i}
+    var el=document.getElementById('ax-'+i);
+    if(el){ el.firstChild.style.left='0%'; el.firstChild.style.width=(((v+1)/2)*100)+'%'; el.classList.remove('hot') }
+  }
+  if(hotIdx>=0&&hotSpan>0.25){ var e=document.getElementById('ax-'+hotIdx); if(e)e.classList.add('hot') }
+}
+
+/* ---- canvas widgets ---- */
+function drawStick(cv,x,y,label){
+  var g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  g.clearRect(0,0,W,H);
+  g.strokeStyle='#1A212B'; g.lineWidth=1;
+  g.beginPath(); g.moveTo(W/2,4); g.lineTo(W/2,H-4); g.moveTo(4,H/2); g.lineTo(W-4,H/2); g.stroke();
+  g.strokeStyle='#151B24'; g.strokeRect(4.5,4.5,W-9,H-9);
+  var px=4+(x*0.5+0.5)*(W-8), py=4+(0.5-y*0.5)*(H-8), rr=W*0.045;
+  g.strokeStyle='rgba(255,158,44,.28)'; g.lineWidth=W*0.012;
+  g.beginPath(); g.moveTo(W/2,H/2); g.lineTo(px,py); g.stroke();
+  g.fillStyle='rgba(255,158,44,.16)'; g.beginPath(); g.arc(px,py,rr*2,0,TAU); g.fill();
+  g.fillStyle='#FF9E2C'; g.beginPath(); g.arc(px,py,rr,0,TAU); g.fill();
+}
+function drawCurve(){
+  var cv=$('#curveCv'),g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  g.clearRect(0,0,W,H);
+  var pad=6, w=W-pad*2, h=H-pad*2;
+  var maxR=Math.max(CFG.rpMax,CFG.yawMax);
+  g.strokeStyle='#151B24'; g.lineWidth=1;
+  for(var i=0;i<=4;i++){var yy=pad+h*i/4;g.beginPath();g.moveTo(pad,yy);g.lineTo(pad+w,yy);g.stroke()}
+  g.strokeStyle='#222A36'; g.beginPath(); g.moveTo(pad+w/2,pad); g.lineTo(pad+w/2,pad+h); g.stroke();
+  function plot(center,max,expo,col,wd){
+    g.strokeStyle=col; g.lineWidth=wd; g.beginPath();
+    for(var i=0;i<=80;i++){
+      var s=-1+2*i/80, r=actualRate(s,center,max,expo);
+      var X=pad+(s*0.5+0.5)*w, Y=pad+h/2-(r/maxR)*(h/2);
+      if(i===0)g.moveTo(X,Y);else g.lineTo(X,Y);
+    }
+    g.stroke();
+  }
+  plot(CFG.yawCenter,CFG.yawMax,CFG.yawExpo,'#1B5C66',1.5);
+  plot(CFG.rpCenter,CFG.rpMax,CFG.rpExpo,'#FF9E2C',2);
+  // live markers
+  [['roll','#3FD8E8'],['pitch','#54E08A']].forEach(function(m){
+    var s=clamp(RC.out[m[0]],-1,1), r=actualRate(s,CFG.rpCenter,CFG.rpMax,CFG.rpExpo);
+    var X=pad+(s*0.5+0.5)*w, Y=pad+h/2-(r/maxR)*(h/2);
+    g.fillStyle=m[1]; g.beginPath(); g.arc(X,Y,3.2,0,TAU); g.fill();
+  });
+  $('#curveLbl').textContent=Math.round(CFG.rpMax)+'°/s';
+}
+function drawHorizon(){
+  var cv=$('#horizonCv'),g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  g.clearRect(0,0,W,H);
+  var dpr=Math.min(devicePixelRatio||1,2);
+  // roll & pitch relative to world
+  var up=new THREE.Vector3(0,1,0).applyQuaternion(Q.q);
+  var fwd=new THREE.Vector3(0,0,-1).applyQuaternion(Q.q);
+  var right=new THREE.Vector3(1,0,0).applyQuaternion(Q.q);
+  var pitch=Math.asin(clamp(fwd.y,-1,1));
+  var roll=Math.atan2(right.y,up.y);
+  var cx=W/2, cy=H/2;
+  var pxPerRad=(H/2)/(50*D2R);
+  var off=pitch*pxPerRad;
+
+  g.save(); g.translate(cx,cy); g.rotate(roll); g.translate(0,off);
+  g.strokeStyle='rgba(255,255,255,.92)'; g.lineWidth=2*dpr; g.shadowColor='rgba(0,0,0,.9)'; g.shadowBlur=3*dpr;
+  var seg=W*0.20, gap=W*0.09;
+  g.beginPath(); g.moveTo(-gap-seg,0); g.lineTo(-gap,0); g.moveTo(gap,0); g.lineTo(gap+seg,0); g.stroke();
+  g.lineWidth=1.4*dpr; g.strokeStyle='rgba(255,255,255,.5)';
+  [-30,-20,-10,10,20,30].forEach(function(d){
+    var y=-d*D2R*pxPerRad, len=(d%20===0)?W*0.10:W*0.06;
+    g.beginPath(); g.moveTo(-len,y); g.lineTo(-len*0.45,y); g.moveTo(len*0.45,y); g.lineTo(len,y); g.stroke();
+  });
+  g.restore();
+
+  // fixed crosshair
+  g.strokeStyle='rgba(255,255,255,.95)'; g.lineWidth=2*dpr;
+  g.shadowColor='rgba(0,0,0,.9)'; g.shadowBlur=3*dpr;
+  g.beginPath();
+  g.moveTo(cx-14*dpr,cy); g.lineTo(cx-5*dpr,cy);
+  g.moveTo(cx+5*dpr,cy);  g.lineTo(cx+14*dpr,cy);
+  g.moveTo(cx,cy-14*dpr); g.lineTo(cx,cy-5*dpr);
+  g.stroke();
+}
+
+/* =======================================================================
+   8. HUD / OSD update
+   ======================================================================= */
+var fpsAcc=0,fpsN=0,fpsShown=60;
+function updateHUD(dt){
+  // OSD
+  $('#oTime').textContent=fmtMS(Q.flightTime);
+  $('#oAlt').textContent=Q.p.y.toFixed(1)+'m';
+  var cell=Q.vbat/CFG.cells;
+  var vEl=$('#oVbat'), cEl=$('#oCell');
+  vEl.textContent=Q.vbat.toFixed(1)+'V';
+  cEl.textContent=cell.toFixed(2);
+  var crit=cell<3.45, warn=cell<3.6;
+  vEl.className='osd-v'+(crit?' osd-crit':(warn?' osd-warn':''));
+  cEl.className='osd-v'+(crit?' osd-crit':(warn?' osd-warn':''));
+  $('#oMah').textContent=Math.round(Q.mah);
+  $('#oThr').textContent=Math.round(RC.out.thr*100)+'%';
+  $('#oAmp').textContent=(CFG.maxAmps*Q.motor*Q.motor).toFixed(1)+'A';
+  $('#oSpd').textContent=Math.round(Q.v.length()*3.6);
+  $('#oG').textContent=Q.gforce.toFixed(1);
+
+  var st=$('#osdStatus');
+  if(Q.crashed){ st.textContent='CRASHED — R TO RESET'; st.className='osd-crit' }
+  else if(CATCH.on && CATCH.over){ st.textContent='ROUND OVER — '+CATCH.caught+(CATCH.adv?' HITS':' CAUGHT')+' — R TO RESTART'; st.className='osd-crit' }
+  else if(!Q.armed){ st.textContent='DISARMED'; st.className='osd-warn' }
+  else if(crit){ st.textContent='LAND NOW'; st.className='osd-crit' }
+  else { st.textContent=''; st.className='' }
+
+  // telemetry rail
+  var up=new THREE.Vector3(0,1,0).applyQuaternion(Q.q);
+  var fwd=new THREE.Vector3(0,0,-1).applyQuaternion(Q.q);
+  var right=new THREE.Vector3(1,0,0).applyQuaternion(Q.q);
+  $('#tRoll').textContent=Math.round(Math.atan2(right.y,up.y)*R2D)+'°';
+  $('#tPitch').textContent=Math.round(Math.asin(clamp(fwd.y,-1,1))*R2D)+'°';
+  var hdg=(Math.atan2(fwd.x,-fwd.z)*R2D+360)%360;
+  $('#tYaw').textContent=Math.round(hdg)+'°';
+  $('#tRate').textContent=Math.round(Q.w.length()*R2D)+'°/s';
+  $('#tVs').textContent=(Q.v.y>=0?'+':'')+Q.v.y.toFixed(1);
+  $('#tDist').textContent=Math.round(Q.dist)+'m';
+  $('#barThr').style.width=(RC.out.thr*100)+'%';
+  var pct=clamp(1-Q.mah/CFG.capacity,0,1);
+  var bb=$('#barBat'); bb.style.width=(pct*100)+'%';
+  bb.parentNode.classList.toggle('amber',pct<0.25);
+
+  // sticks (mode 2 default: left = throttle/yaw, right = pitch/roll)
+  var m2=CFG.stickMode===2;
+  drawStick($('#stickL'), RC.out.yaw, m2?(RC.out.thr*2-1):RC.out.pitch);
+  drawStick($('#stickR'), RC.out.roll, m2?RC.out.pitch:(RC.out.thr*2-1));
+  $('#lblL').textContent=m2?'THR / YAW':'PITCH / YAW';
+  $('#lblR').textContent=m2?'PITCH / ROLL':'THR / ROLL';
+  $('#modeLbl').textContent='MODE '+CFG.stickMode;
+
+  drawCurve(); drawHorizon(); paintChans(); DRILL.render();
+
+  fpsAcc+=dt; fpsN++;
+  if(fpsAcc>0.5){ fpsShown=Math.round(fpsN/fpsAcc); fpsAcc=0; fpsN=0; $('#fps').textContent=fpsShown+' FPS' }
+  $('#modeTxt').textContent=Q.armed?'ARMED':'ACRO';
+  $('#viewTxt').textContent=VIEWS[viewMode];
+}
+
+/* =======================================================================
+   9. CAMERAS + LOOP
+   ======================================================================= */
+var chasePos=new THREE.Vector3(0,2,6);
+var _sun=new THREE.Vector3(0.52,0.74,0.42).normalize();
+function updateCameras(dt){
+  droneObj.position.copy(Q.p);
+  droneObj.quaternion.copy(Q.q);
+
+  // keep the sun's shadow frustum centred on the quad
+  if(LIGHTS.dir){
+    LIGHTS.dir.position.copy(Q.p).addScaledVector(_sun,190);
+    LIGHTS.dir.target.position.copy(Q.p);
+    LIGHTS.dir.target.updateMatrixWorld();
+  }
+  var spin=0.3+Q.motor*2.4;
+  for(var i=0;i<propMeshes.length;i++) propMeshes[i].rotation.z+=spin*(i%2?1:-1)*dt*40;
+
+  var gy=terrainY(Q.p.x,Q.p.z);
+  var alt=Math.max(0,Q.p.y-gy);
+  blobShadow.position.set(Q.p.x,gy+0.06,Q.p.z);
+  var sc=clamp(0.55+alt*0.42,0.5,7);
+  blobShadow.scale.set(sc,sc,sc);
+  blobShadow.material.opacity=clamp(0.45-alt*0.028,0.04,0.45);   // subtler now the sun casts a real one
+
+  // FPV
+  camFPV.position.copy(Q.p);
+  camFPV.quaternion.copy(Q.q);
+  camFPV.rotateX(CFG.camTilt*D2R);
+  camFPV.fov=CFG.fov;
+
+  // chase
+  var back=new THREE.Vector3(0,0.55,2.4).applyQuaternion(Q.q).add(Q.p);
+  back.y=Math.max(terrainY(back.x,back.z)+0.4,back.y);
+  chasePos.lerp(back,1-Math.exp(-dt*9));
+  camChase.position.copy(chasePos);
+  camChase.up.set(0,1,0);
+  camChase.lookAt(Q.p);
+
+  // line of sight
+  camLOS.lookAt(Q.p);
+
+  droneObj.visible=(viewMode!==0);
+}
+
+var lastT=performance.now(), acc=0;
+var STEP=1/500, MAXSUB=90;
+function frame(now){
+  requestAnimationFrame(frame);
+  var dt=Math.min(0.1,(now-lastT)/1000); lastT=now;
+
+  readRC(dt);
+  calTick();
+
+  prevPlayer.copy(Q.p);          // frame-start position, for the swept contact test
+  if(!CAL.active){
+    acc+=dt; var n=0;
+    while(acc>=STEP && n<MAXSUB){ step(STEP); acc-=STEP; n++ }
+    if(n>=MAXSUB) acc=0;
+  }
+  if(Q.crashed && Q.crashT>1.6) respawn();
+
+  if(!CAL.active) CATCH.update(dt);
+  if(LB.dirty && now-LB.lastFlush>2000) LB.flush();   // throttled: a hover best improves every frame
+  updateCameras(dt);
+  AUDIO.update();
+  updateHUD(dt);
+  renderer.render(scene,activeCam);
+  drawTargets();
+}
+function respawn(){
+  var s=DRILL.spawn();
+  if(DRILL.id==='catch' && CATCH.over) CATCH.reset();
+  resetQuad(s,DRILL.spawnYaw());
+  if(DRILL.id==='gates'){ DRILL.st.gate=0; DRILL.st.lapT=0; WORLD.gates.forEach(function(g){g.prev=0}); DRILL.highlight() }
+  if(DRILL.id==='orbit'){ DRILL.st.ang=null }
+}
+
+/* =======================================================================
+   10. EVENTS
+   ======================================================================= */
+function bind(){
+  $('#btnPanel').addEventListener('click',function(){
+    var r=$('#right'); r.classList.toggle('hidden');
+    var open=!r.classList.contains('hidden');
+    this.classList.toggle('active',open);
+    $('#app').classList.toggle('no-right',!open);
+  });
+  $('#btnPanel').classList.add('active');
+  $('#btnHelp').addEventListener('click',function(){ $('#setup').classList.remove('hidden'); calCancel() });
+  $('#btnHome').addEventListener('click',showHome);
+  $('#btnFree').addEventListener('click',function(){ startGame('free') });
+  $('#btnRadio2').addEventListener('click',function(){ $('#setup').classList.remove('hidden'); calCancel() });
+
+  var nameEl=$('#pilotName');
+  nameEl.addEventListener('input',function(){
+    PROFILE.name=nameEl.value.trim().slice(0,16);
+    saveProfile(); LB.renameMe();
+  });
+  nameEl.addEventListener('change',renderHome);
+
+  $('#btnProfile').addEventListener('click',function(){
+    var io=$('#profileIO');
+    io.hidden=!io.hidden;
+    if(!io.hidden){
+      LB.flush();
+      $('#profileText').value=JSON.stringify({v:1,profile:PROFILE,board:LB.data});
+    }
+  });
+  $('#btnCopy').addEventListener('click',function(){
+    var t=$('#profileText'); t.select();
+    var b=this;
+    function done(ok){ b.textContent=ok?'Copied':'Select and copy manually'; setTimeout(function(){b.textContent='Copy'},1800) }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t.value).then(function(){done(true)},function(){done(false)});
+    } else done(false);
+  });
+  $('#btnApply').addEventListener('click',function(){
+    var b=this;
+    try{
+      var d=JSON.parse($('#profileText').value);
+      if(!d||!d.profile||!d.profile.id) throw new Error('no id');
+      PROFILE=d.profile;
+      if(d.board&&typeof d.board==='object') LB.data=d.board;
+      LB.normalise();
+      saveProfile(); LB.dirty=true; LB.flush();
+      showHome();
+      b.textContent='Record restored';
+    }catch(e){ b.textContent="That isn't a pilot record" }
+    setTimeout(function(){b.textContent='Apply pasted record'},2200);
+  });
+  $('#btnWipe').addEventListener('click',function(){
+    var b=this;
+    if(b.dataset.armed){
+      GAMES.forEach(function(g){ LB.data[g.id]=[] });
+      LB.dirty=true; LB.flush(); renderHome();
+      delete b.dataset.armed; b.textContent='Reset boards';
+    } else {
+      b.dataset.armed='1'; b.textContent='Erase every score — click again';
+      setTimeout(function(){ if(b.dataset.armed){delete b.dataset.armed;b.textContent='Reset boards'} },4000);
+    }
+  });
+
+  $('#kbPitch').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    CFG.kbInvertPitch=parseInt(b.dataset.i,10);
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); save();
+  });
+  $('#btnSound').addEventListener('click',function(){
+    var on=AUDIO.toggle(); this.textContent=on?'Sound on':'Sound off'; this.classList.toggle('active',on);
+  });
+  $('#btnSkip').addEventListener('click',function(){ clearKeys(); $('#setup').classList.add('hidden'); updateRcChip() });
+  $('#btnCal').addEventListener('click',calStart);
+  $('#btnCal2').addEventListener('click',calStart);
+  $('#calNext').addEventListener('click',calAdvance);
+  $('#calCancel').addEventListener('click',function(){ calCancel(); $('#setup').classList.add('hidden') });
+  $('#btnEdgeTX').addEventListener('click',function(){
+    RC.map=blankMap(); buildChanList(); save();
+    $('#rcTxt').textContent='EdgeTX map';
+  });
+  $('#btnDefaults').addEventListener('click',function(){
+    ['mass','twr','motorTau','cells','capacity','maxAmps','resist','dragScale','propwash','groundEffect',
+     'volume','windVol'].forEach(function(k){CFG[k]=DEFAULTS[k]});
+    refreshSliders(); save();
+  });
+  $('#shadowSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    CFG.shadows=parseInt(b.dataset.s,10);
+    if(LIGHTS.dir) LIGHTS.dir.castShadow=!!CFG.shadows;
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); save();
+  });
+  $('#framePreset').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    var p=FRAME_PRESETS[b.dataset.f]; if(!p)return;
+    for(var k in p)CFG[k]=p[k];
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); refreshSliders(); save();
+  });
+
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected','false')});
+      t.setAttribute('aria-selected','true');
+      document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('on')});
+      document.getElementById('pane-'+t.dataset.pane).classList.add('on');
+    });
+  });
+  $('#ratePreset').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    var p=RATE_PRESETS[b.dataset.p]; if(!p)return;
+    for(var k in p)CFG[k]=p[k];
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); refreshSliders(); save();
+  });
+  $('#stickMode').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    CFG.stickMode=parseInt(b.dataset.m,10);
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); save();
+  });
+  var asp=$('#advSpeed');
+  asp.value=CFG.tgtSpeed;
+  $('#advSpeedV').textContent=(+CFG.tgtSpeed).toFixed(1)+'×';
+  asp.addEventListener('input',function(){
+    CFG.tgtSpeed=parseFloat(asp.value);
+    $('#advSpeedV').textContent=CFG.tgtSpeed.toFixed(1)+'×';
+    save();
+  });
+  var ase=$('#advSearch');
+  ase.value=CFG.searchTime;
+  $('#advSearchV').textContent=Math.round(CFG.searchTime)+'s';
+  ase.addEventListener('input',function(){
+    CFG.searchTime=parseFloat(ase.value);
+    $('#advSearchV').textContent=Math.round(CFG.searchTime)+'s';
+    save();
+  });
+  $('#advFlow').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    CFG.waveMode=b.dataset.w;
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); save();
+  });
+  $('#advFlow').querySelectorAll('button').forEach(function(b){
+    b.classList.toggle('on',b.dataset.w===CFG.waveMode);
+  });
+
+  var abk=$('#advBrackets');
+  function paintBrackets(){
+    abk.textContent=CFG.brackets?'Brackets on':'Brackets off';
+    abk.classList.toggle('active',!!CFG.brackets);
+  }
+  paintBrackets();
+  abk.addEventListener('click',function(){ CFG.brackets=CFG.brackets?0:1; paintBrackets(); save() });
+
+  $('#drillSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); DRILL.set(b.dataset.d);
+  });
+
+  addEventListener('keydown',function(e){
+    if(typingInField(e)) return;                  // the call sign field is not a throttle
+    if(modalOpen()) return;                       // no flight keys behind the home or setup screens
+    var k=e.key.toLowerCase();
+    RC.keys[k]=true;
+    if(k==='enter'){ if(!Q.crashed){Q.armed=!Q.armed; if(Q.armed&&!AUDIO.on){}} e.preventDefault() }
+    if(k==='r'){ Q.mah=Q.mah; respawn(); Q.crashed=false }
+    if(k==='c'){ viewMode=(viewMode+1)%3; activeCam=[camFPV,camChase,camLOS][viewMode] }
+    if([' ','arrowup','arrowdown','arrowleft','arrowright'].indexOf(k)>=0) e.preventDefault();
+  });
+  addEventListener('keyup',function(e){ RC.keys[e.key.toLowerCase()]=false });
+
+  addEventListener('gamepadconnected',function(){ pollPad(); updateRcChip(); if(!CAL.active)buildAxList() });
+  addEventListener('gamepaddisconnected',function(){ pollPad(); updateRcChip() });
+
+  // AUX arm switch
+  setInterval(function(){
+    if(!RC.connected||RC.map.aux.axis<0)return;
+    var a=axVal('aux'); if(a===null)return;
+    var want=a>0.5;
+    if(want!==Q.armed && !Q.crashed) Q.armed=want;
+  },50);
+}
+
+/* =======================================================================
+   11. BOOT
+   ======================================================================= */
+function boot(){
+  var savedMap=load();
+  if(savedMap) RC.map=savedMap;
+  PROFILE=loadProfile(); saveProfile();
+  LB.load();
+  buildScene();
+  buildSliders();
+  buildChanList();
+  // reflect saved preset selection
+  var seg=$('#ratePreset');
+  seg.querySelectorAll('button').forEach(function(b){
+    var p=RATE_PRESETS[b.dataset.p];
+    var match=p&&Math.abs(p.rpMax-CFG.rpMax)<1&&Math.abs(p.rpCenter-CFG.rpCenter)<1;
+    b.classList.toggle('on',!!match);
+  });
+  $('#stickMode').querySelectorAll('button').forEach(function(b){
+    b.classList.toggle('on',parseInt(b.dataset.m,10)===CFG.stickMode);
+  });
+  $('#kbPitch').querySelectorAll('button').forEach(function(b){
+    b.classList.toggle('on',parseInt(b.dataset.i,10)===(CFG.kbInvertPitch?1:0));
+  });
+  $('#shadowSeg').querySelectorAll('button').forEach(function(b){
+    b.classList.toggle('on',parseInt(b.dataset.s,10)===(CFG.shadows?1:0));
+  });
+  if(LIGHTS.dir) LIGHTS.dir.castShadow=!!CFG.shadows;
+  bind();
+  DRILL.reset();
+  DRILL.set('free');
+  pollPad();          // surfaces a blocked gamepad feature before the first frame
+  updateRcChip();
+  showHome();
+  onResize();
+  addEventListener('visibilitychange',function(){ if(document.hidden) LB.flush() });
+  addEventListener('pagehide',function(){ LB.flush() });
+  requestAnimationFrame(frame);
+}
+if(typeof THREE==='undefined'){
+  document.getElementById('view').innerHTML='<div style="padding:40px;color:#8B95A7;font-family:system-ui">3D library failed to load. Reload the page.</div>';
+} else { boot(); }
+})();
+</script>
